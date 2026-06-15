@@ -12,8 +12,21 @@ function getAvailableYears(stocks: Stock[]): number[] {
   for (const s of stocks) {
     const payments = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
     payments.forEach((p) => years.add(p.year));
+    const annual = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
+    annual.filter((d) => d.value !== null && d.value > 0).forEach((d) => years.add(d.year));
   }
   return Array.from(years).sort((a, b) => b - a);
+}
+
+function InfoIcon() {
+  return (
+    <span
+      title="goodinfo 未提供除息月份資料，僅顯示年度合計"
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#e5e5ea', color: '#86868b', fontSize: 9, fontWeight: 700, cursor: 'help', flexShrink: 0, marginLeft: 4 }}
+    >
+      i
+    </span>
+  );
 }
 
 export default function DividendCalendar({ stocks }: Props) {
@@ -21,12 +34,10 @@ export default function DividendCalendar({ stocks }: Props) {
   const allYears = getAvailableYears(selected);
   const [pinnedYear, setPinnedYear] = useState<number | null>(null);
 
-  // Use pinned year if still valid, otherwise fall back to most recent available
   const year = pinnedYear && allYears.includes(pinnedYear) ? pinnedYear : (allYears[0] ?? new Date().getFullYear());
   const yearIdx = allYears.indexOf(year);
 
-  // Per-stock monthly amounts for the selected year
-  const rows = selected
+  const allRows = selected
     .map((s) => {
       const payments = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
       const monthly = Array.from({ length: 12 }, (_, i) => {
@@ -36,22 +47,33 @@ export default function DividendCalendar({ stocks }: Props) {
           .reduce((sum, p) => sum + p.amount, 0);
         return total > 0 ? total : null;
       });
-      const hasAny = monthly.some((v) => v !== null);
-      return { stock: s, monthly, hasAny };
-    })
-    .filter((r) => r.hasAny);
+      const hasMonthly = monthly.some((v) => v !== null);
 
-  // Monthly totals (per share weighted by shares held)
+      const annualData = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
+      const annualValue = annualData.find((d) => d.year === year)?.value ?? null;
+
+      return { stock: s, monthly, hasMonthly, annualValue };
+    })
+    .filter((r) => r.hasMonthly || (r.annualValue !== null && r.annualValue > 0));
+
+  const hasShares = selected.some((s) => s.shares > 0);
+
+  // Monthly totals (only from stocks with monthly breakdown)
   const monthlyTotals = Array.from({ length: 12 }, (_, i) =>
-    rows.reduce((sum, r) => {
+    allRows.reduce((sum, r) => {
+      if (!r.hasMonthly) return sum;
       const perShare = r.monthly[i];
       if (perShare === null) return sum;
-      const shares = r.stock.shares || 0;
-      return sum + perShare * shares;
+      return sum + perShare * (r.stock.shares || 0);
     }, 0)
   );
-  const yearTotal = monthlyTotals.reduce((a, b) => a + b, 0);
-  const hasShares = selected.some((s) => s.shares > 0);
+
+  // Year total includes both monthly stocks and annual-only stocks
+  const monthlyYearTotal = monthlyTotals.reduce((a, b) => a + b, 0);
+  const annualOnlyTotal = allRows
+    .filter((r) => !r.hasMonthly)
+    .reduce((sum, r) => sum + (r.annualValue ?? 0) * (r.stock.shares || 0), 0);
+  const yearTotal = monthlyYearTotal + annualOnlyTotal;
 
   if (selected.length === 0) return null;
 
@@ -70,7 +92,7 @@ export default function DividendCalendar({ stocks }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => allYears[yearIdx + 1] && setPinnedYear(allYears[yearIdx + 1])}
-            disabled={yearIdx < 0 || yearIdx >= allYears.length - 1}
+            disabled={yearIdx >= allYears.length - 1}
             style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#f5f5f7', cursor: yearIdx >= allYears.length - 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1d1d1f', opacity: yearIdx >= allYears.length - 1 ? 0.3 : 1 }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -86,7 +108,7 @@ export default function DividendCalendar({ stocks }: Props) {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {allRows.length === 0 ? (
         <div style={{ padding: '32px 20px', textAlign: 'center', color: '#aeaeb2', fontSize: 13 }}>
           {year} 年尚無股利紀錄
         </div>
@@ -99,12 +121,16 @@ export default function DividendCalendar({ stocks }: Props) {
                 {MONTHS.map((m) => (
                   <th key={m} style={{ textAlign: 'center', padding: '10px 6px', color: '#6e6e73', fontWeight: 500, borderBottom: '1px solid #f2f2f7', minWidth: 52 }}>{m}</th>
                 ))}
-                {hasShares && <th style={{ textAlign: 'right', padding: '10px 16px', color: '#6e6e73', fontWeight: 500, borderBottom: '1px solid #f2f2f7', minWidth: 70 }}>年合計</th>}
+                <th style={{ textAlign: 'right', padding: '10px 16px', color: '#6e6e73', fontWeight: 500, borderBottom: '1px solid #f2f2f7', minWidth: 80, whiteSpace: 'nowrap' }}>年合計</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ stock, monthly }, ri) => {
-                const rowTotal = monthly.reduce<number>((sum, v) => sum + (v ?? 0) * (stock.shares || 0), 0);
+              {allRows.map(({ stock, monthly, hasMonthly, annualValue }, ri) => {
+                const rowMonthlyTotal = monthly.reduce<number>((sum, v) => sum + (v ?? 0) * (stock.shares || 0), 0);
+                const rowAnnualTotal = hasMonthly
+                  ? rowMonthlyTotal
+                  : (annualValue ?? 0) * (stock.shares || 0);
+
                 return (
                   <tr key={stock.id} style={{ background: ri % 2 === 0 ? '#fff' : '#fafafa' }}>
                     <td style={{ padding: '9px 16px', position: 'sticky', left: 0, background: ri % 2 === 0 ? '#fff' : '#fafafa', zIndex: 1, borderRight: '1px solid #f2f2f7' }}>
@@ -113,7 +139,7 @@ export default function DividendCalendar({ stocks }: Props) {
                     </td>
                     {monthly.map((val, mi) => (
                       <td key={mi} style={{ textAlign: 'center', padding: '9px 4px' }}>
-                        {val !== null ? (
+                        {hasMonthly && val !== null ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                             <span style={{ color: '#0071e3', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{val.toFixed(2)}</span>
                             {stock.shares > 0 && (
@@ -127,35 +153,49 @@ export default function DividendCalendar({ stocks }: Props) {
                         )}
                       </td>
                     ))}
-                    {hasShares && (
-                      <td style={{ textAlign: 'right', padding: '9px 16px', color: rowTotal > 0 ? '#10b981' : '#aeaeb2', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                        {rowTotal > 0 ? `$${rowTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
-                      </td>
-                    )}
+                    {/* 年合計 */}
+                    <td style={{ textAlign: 'right', padding: '9px 16px', borderLeft: '1px solid #f2f2f7' }}>
+                      {hasMonthly ? (
+                        // Monthly payer: show total if shares set, else per-share sum
+                        <span style={{ color: rowMonthlyTotal > 0 ? '#10b981' : (stock.shares > 0 ? '#aeaeb2' : '#1d1d1f'), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                          {stock.shares > 0
+                            ? (rowMonthlyTotal > 0 ? `$${rowMonthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—')
+                            : `${monthly.reduce<number>((s, v) => s + (v ?? 0), 0).toFixed(2)} 元`}
+                        </span>
+                      ) : (
+                        // Annual-only payer
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                          <span style={{ color: '#10b981', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                            {stock.shares > 0
+                              ? `$${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                              : `${(annualValue ?? 0).toFixed(2)} 元`}
+                          </span>
+                          <InfoIcon />
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
 
               {/* Total row */}
-              {hasShares && (
-                <tr style={{ background: '#f5f5f7', borderTop: '2px solid #e5e5ea' }}>
-                  <td style={{ padding: '10px 16px', fontWeight: 600, color: '#1d1d1f', position: 'sticky', left: 0, background: '#f5f5f7', zIndex: 1, borderRight: '1px solid #f2f2f7' }}>合計</td>
-                  {monthlyTotals.map((total, mi) => (
-                    <td key={mi} style={{ textAlign: 'center', padding: '10px 4px', fontWeight: 600, color: total > 0 ? '#10b981' : '#aeaeb2', fontVariantNumeric: 'tabular-nums' }}>
-                      {total > 0 ? `$${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
-                    </td>
-                  ))}
-                  <td style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 700, color: '#10b981', fontVariantNumeric: 'tabular-nums' }}>
-                    ${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              <tr style={{ background: '#f5f5f7', borderTop: '2px solid #e5e5ea' }}>
+                <td style={{ padding: '10px 16px', fontWeight: 600, color: '#1d1d1f', position: 'sticky', left: 0, background: '#f5f5f7', zIndex: 1, borderRight: '1px solid #f2f2f7' }}>合計</td>
+                {monthlyTotals.map((total, mi) => (
+                  <td key={mi} style={{ textAlign: 'center', padding: '10px 4px', fontWeight: 600, color: total > 0 ? '#10b981' : '#aeaeb2', fontVariantNumeric: 'tabular-nums' }}>
+                    {total > 0 ? `$${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
                   </td>
-                </tr>
-              )}
+                ))}
+                <td style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 700, color: yearTotal > 0 ? '#10b981' : '#aeaeb2', fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #f2f2f7' }}>
+                  {yearTotal > 0 ? `$${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       )}
 
-      {!hasShares && rows.length > 0 && (
+      {!hasShares && allRows.length > 0 && (
         <div style={{ padding: '12px 20px', borderTop: '1px solid #f2f2f7', fontSize: 12, color: '#86868b', textAlign: 'center' }}>
           在股票卡片輸入持股數後可顯示預估現金收入
         </div>
