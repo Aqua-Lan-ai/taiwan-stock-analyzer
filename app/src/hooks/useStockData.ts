@@ -75,62 +75,51 @@ function parseCashFlowRows(html: string): { cfo: YearData[]; capex: YearData[] }
 }
 
 // Extract ex-date month from a dividend row; handles both Western (2024/06/15) and ROC (113/06/15) formats
-// Parse dividendPayments from StockDividend.asp (has actual ex-dates per distribution)
-// Scans every cell in each row for a ROC/Western date, pairs it with the cash div amount
-function parseExDatePage(html: string): DividendPayment[] {
-  const payments: DividendPayment[] = [];
-  const rows = extractRows(html);
-  for (const r of rows) {
-    let year: number | null = null;
-    let month: number | null = null;
-    let amount: number | null = null;
-    for (const cell of r) {
-      // Match ROC date (113/06/15) or Western date (2024/06/15)
-      const dm = cell.match(/^(\d{3,4})[/-](\d{1,2})[/-]\d{1,2}$/);
-      if (dm && year === null) {
-        let y = parseInt(dm[1]);
-        const mo = parseInt(dm[2]);
-        if (y < 1000) y += 1911;
-        if (y >= 2000 && y <= 2040 && mo >= 1 && mo <= 12) {
-          year = y;
-          month = mo;
-        }
-      }
-      // Match cash dividend amount (reasonable per-share range: 0.01–99)
-      if (amount === null) {
-        const n = parseFloat(cell.replace(/,/g, ''));
-        if (!isNaN(n) && n >= 0.01 && n < 100) amount = n;
-      }
-    }
-    if (year !== null && month !== null && amount !== null) {
-      payments.push({ year, month, amount });
-    }
-  }
-  return payments;
-}
-
 function parseDividendRows(html: string): {
   cashDividend: YearData[];
   dividendDays: YearData[];
+  dividendPayments: DividendPayment[];
 } {
   const rows = extractRows(html);
-  const yearRows = rows.filter((r) => /^\d{4}$/.test(r[0]) && r.length >= 5);
   const byYear = new Map<number, { div: number; days: number | null }>();
+  const payments: DividendPayment[] = [];
+  const seen = new Set<string>(); // deduplicate across repeated table sections
+  let currentYear: number | null = null;
 
-  for (const r of yearRows) {
-    const fiscalYear = parseInt(r[0]);
-    const amount = parseNum(r[4]) ?? 0;
-    const days = parseNum(r[9]);
-    if (!byYear.has(fiscalYear)) byYear.set(fiscalYear, { div: 0, days: null });
-    const entry = byYear.get(fiscalYear)!;
-    entry.div += amount;
-    if (days !== null && entry.days === null) entry.days = days;
+  for (const r of rows) {
+    if (r.length < 5) continue;
+
+    if (/^\d{4}$/.test(r[0])) {
+      // Year summary row — track parent year for sub-rows below
+      currentYear = parseInt(r[0]);
+      const amount = parseNum(r[4]) ?? 0;
+      const days = parseNum(r[9]);
+      if (!byYear.has(currentYear)) byYear.set(currentYear, { div: 0, days: null });
+      const entry = byYear.get(currentYear)!;
+      entry.div += amount;
+      if (days !== null && entry.days === null) entry.days = days;
+    } else if (currentYear !== null) {
+      // Sub-distribution row: r[0] = "∟MM/DD" (ex-date without year)
+      // Skip rows with "未定" (TBD) — not yet announced
+      if (r[0].includes('未定')) continue;
+      const monthMatch = r[0].match(/(\d{1,2})\/\d{1,2}/);
+      if (monthMatch) {
+        const month = parseInt(monthMatch[1]);
+        const amount = parseNum(r[4]);
+        const key = `${currentYear}-${month}`;
+        if (amount && amount > 0 && month >= 1 && month <= 12 && !seen.has(key)) {
+          seen.add(key);
+          payments.push({ year: currentYear, month, amount });
+        }
+      }
+    }
   }
 
   const sorted = Array.from(byYear.entries()).sort((a, b) => b[0] - a[0]).slice(0, 30);
   return {
     cashDividend: sorted.map(([year, v]) => ({ year, value: v.div || null })),
     dividendDays: sorted.map(([year, v]) => ({ year, value: v.days })),
+    dividendPayments: payments,
   };
 }
 
@@ -150,17 +139,15 @@ export function useStockData() {
 
     try {
       if (isETF) {
-        // ETF: fetch basic + dividend policy + ex-date records
-        const [basicHtml, divHtml, exdateHtml] = await Promise.all([
+        // ETF: fetch basic + dividend policy
+        const [basicHtml, divHtml] = await Promise.all([
           fetchProxy(stockId, 'basic'),
           fetchProxy(stockId, 'dividend'),
-          fetchProxy(stockId, 'exdate').catch(() => ''),
         ]);
 
         const name = parseStockName(basicHtml);
         const price = parseStockPrice(basicHtml);
-        const { cashDividend, dividendDays } = parseDividendRows(divHtml);
-        const dividendPayments = parseExDatePage(exdateHtml);
+        const { cashDividend, dividendDays, dividendPayments } = parseDividendRows(divHtml);
         const etfBasic = parseETFBasic(basicHtml);
 
         const etfFinancials: ETFFinancials = {
@@ -193,12 +180,11 @@ export function useStockData() {
 
       } else {
         // Individual stock: fetch all endpoints in parallel
-        const [basicHtml, perfHtml, cfHtml, divHtml, exdateHtml] = await Promise.all([
+        const [basicHtml, perfHtml, cfHtml, divHtml] = await Promise.all([
           fetchProxy(stockId, 'basic'),
           fetchProxy(stockId, 'performance'),
           fetchProxy(stockId, 'cashflow'),
           fetchProxy(stockId, 'dividend'),
-          fetchProxy(stockId, 'exdate').catch(() => ''),
         ]);
 
         const name = parseStockName(basicHtml);
@@ -206,8 +192,7 @@ export function useStockData() {
         const subType = parseSubType(basicHtml);
         const perf = parsePerformanceRows(perfHtml);
         const { cfo, capex } = parseCashFlowRows(cfHtml);
-        const { cashDividend, dividendDays } = parseDividendRows(divHtml);
-        const dividendPayments = parseExDatePage(exdateHtml);
+        const { cashDividend, dividendDays, dividendPayments } = parseDividendRows(divHtml);
 
         const freeCashFlow: YearData[] = cfo.map((d) => {
           const k = capex.find((c) => c.year === d.year)?.value;
