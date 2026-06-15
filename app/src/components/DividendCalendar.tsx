@@ -10,10 +10,16 @@ const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','
 function getAvailableYears(stocks: Stock[]): number[] {
   const years = new Set<number>();
   for (const s of stocks) {
+    // Primary: years with actual monthly payment data
     const payments = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
     payments.forEach((p) => years.add(p.year));
-    const annual = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
-    annual.filter((d) => d.value !== null && d.value > 0).forEach((d) => years.add(d.year));
+  }
+  // Fallback: if no monthly data at all, use cashDividend years
+  if (years.size === 0) {
+    for (const s of stocks) {
+      const annual = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
+      annual.filter((d) => d.value !== null && d.value > 0).forEach((d) => years.add(d.year));
+    }
   }
   return Array.from(years).sort((a, b) => b - a);
 }
