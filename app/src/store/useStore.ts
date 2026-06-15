@@ -11,6 +11,7 @@ interface StoreState {
   updateStock: (id: string, data: Partial<Stock>) => void;
   updateSettings: (settings: Partial<GlobalSettings>) => void;
   toggleSelected: (id: string) => void;
+  selectAll: (selected: boolean) => void;
   updateShares: (id: string, shares: number) => void;
   updateETFMeta: (id: string, aum: number | null, expenseRatio: number | null) => void;
 }
@@ -63,6 +64,11 @@ export const useStore = create<StoreState>()(
       toggleSelected: (id) =>
         set((state) => ({
           stocks: state.stocks.map((s) => s.id === id ? { ...s, selected: !s.selected } : s),
+        })),
+
+      selectAll: (selected) =>
+        set((state) => ({
+          stocks: state.stocks.map((s) => ({ ...s, selected })),
         })),
 
       updateShares: (id, shares) =>

@@ -62,9 +62,13 @@ export default function StockDetailPage() {
   })();
 
   useEffect(() => {
-    if (id && stock && !stock.financials && !stock.etfFinancials) {
-      fetchStockData(id);
-    }
+    if (!id) return;
+    const needsLoad =
+      !stock ||
+      (!stock.financials && !stock.etfFinancials) ||
+      (stock.financials && !stock.financials.dividendPayments?.length) ||
+      (stock.etfFinancials && !stock.etfFinancials.dividendPayments?.length);
+    if (needsLoad) fetchStockData(id);
   }, [id]);
 
   if (!stock) {

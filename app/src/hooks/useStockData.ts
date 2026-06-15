@@ -9,8 +9,9 @@ import { useStore } from '../store/useStore';
 
 const API = '/api';
 
-async function fetchProxy(stockId: string, type: string): Promise<string> {
-  const res = await fetch(`${API}/proxy?stockId=${stockId}&type=${type}`);
+async function fetchProxy(stockId: string, type: string, force = false): Promise<string> {
+  const url = `${API}/proxy?stockId=${stockId}&type=${type}${force ? '&force=1' : ''}`;
+  const res = await fetch(url);
   const json = await res.json();
   if (json.error) throw new Error(json.error);
   return json.html ?? '';
@@ -130,7 +131,7 @@ export function useStockData() {
   const [error, setError] = useState<string | null>(null);
   const { settings, updateStock } = useStore();
 
-  const fetchStockData = useCallback(async (stockId: string) => {
+  const fetchStockData = useCallback(async (stockId: string, force = false) => {
     setLoading(true);
     setError(null);
 
@@ -141,8 +142,8 @@ export function useStockData() {
       if (isETF) {
         // ETF: fetch basic + dividend policy
         const [basicHtml, divHtml] = await Promise.all([
-          fetchProxy(stockId, 'basic'),
-          fetchProxy(stockId, 'dividend'),
+          fetchProxy(stockId, 'basic', force),
+          fetchProxy(stockId, 'dividend', force),
         ]);
 
         const name = parseStockName(basicHtml);
@@ -181,10 +182,10 @@ export function useStockData() {
       } else {
         // Individual stock: fetch all endpoints in parallel
         const [basicHtml, perfHtml, cfHtml, divHtml] = await Promise.all([
-          fetchProxy(stockId, 'basic'),
-          fetchProxy(stockId, 'performance'),
-          fetchProxy(stockId, 'cashflow'),
-          fetchProxy(stockId, 'dividend'),
+          fetchProxy(stockId, 'basic', force),
+          fetchProxy(stockId, 'performance', force),
+          fetchProxy(stockId, 'cashflow', force),
+          fetchProxy(stockId, 'dividend', force),
         ]);
 
         const name = parseStockName(basicHtml);

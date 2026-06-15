@@ -115,8 +115,12 @@ async function getClientId() {
   return cachedClientId;
 }
 
+// In-memory cache: key = "stockId/type", value = { html, time }
+const htmlCache = new Map();
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 app.get('/api/proxy', async (req, res) => {
-  const { stockId, type } = req.query;
+  const { stockId, type, force } = req.query;
   if (!stockId) return res.status(400).json({ error: 'stockId required' });
 
   const paths = {
@@ -130,16 +134,24 @@ app.get('/api/proxy', async (req, res) => {
   const path = paths[type];
   if (!path) return res.status(400).json({ error: 'invalid type' });
 
+  const cacheKey = `${stockId}/${type}`;
+  const cached = htmlCache.get(cacheKey);
+  if (cached && force !== '1' && Date.now() - cached.time < CACHE_TTL_MS) {
+    console.log(`[proxy] ${cacheKey} (cache hit)`);
+    return res.json({ html: cached.html, stockId, type, cached: true });
+  }
+
   try {
     await throttle();
     const clientId = await getClientId();
     const html = await fetchGoodinfo(path, clientId);
     if (html.includes('異常連線') || html.includes('鎖定用戶')) {
-      cachedClientId = null; // force refresh on next request
+      cachedClientId = null;
       console.error('[proxy] blocked by goodinfo — wait before retrying');
       return res.status(429).json({ error: 'goodinfo rate limit — please wait 15min' });
     }
-    console.log(`[proxy] ${stockId}/${type} → ${html.length} chars`);
+    htmlCache.set(cacheKey, { html, time: Date.now() });
+    console.log(`[proxy] ${cacheKey} → ${html.length} chars`);
     res.json({ html, stockId, type });
   } catch (err) {
     console.error('[proxy] error:', err.message);
