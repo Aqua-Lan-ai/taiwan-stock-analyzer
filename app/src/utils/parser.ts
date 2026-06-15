@@ -99,8 +99,11 @@ export function parseDividendData(html: string): {
 
 // Detect if a stock is a financial stock from goodinfo page content
 export function parseSubType(html: string): StockSubType {
-  const financialKeywords = ['金融保險', '銀行業', '保險業', '證券業', '金控', '票券'];
-  if (financialKeywords.some((kw) => html.includes(kw))) return 'financial';
+  // Extract industry name from the 產業別 field (value is inside an <a> tag)
+  const m = html.match(/產業別[\s\S]{0,150}?<a[^>]*>([^<]{1,30})<\/a>/);
+  const industry = m ? m[1] : '';
+  const financialKeywords = ['金融保險', '銀行業', '保險業', '證券業', '金控業', '票券業'];
+  if (financialKeywords.some((kw) => industry.includes(kw))) return 'financial';
   return null;
 }
 
