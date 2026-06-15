@@ -1,0 +1,113 @@
+import https from 'https';
+import zlib from 'zlib';
+
+const GOODINFO_BASE = 'https://goodinfo.tw/tw';
+const agent = new https.Agent({ rejectUnauthorized: false });
+
+const htmlCache = new Map();
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+function httpsGet(url, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      agent,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+        ...headers,
+      },
+    };
+    https.get(url, options, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        const buf = Buffer.concat(chunks);
+        const enc = (res.headers['content-encoding'] || '').toLowerCase();
+        const done = (b) => resolve({ body: b.toString('utf8'), headers: res.headers });
+        if (enc === 'gzip') zlib.gunzip(buf, (err, r) => done(err ? buf : r));
+        else if (enc === 'deflate') zlib.inflate(buf, (err, r) => done(err ? buf : r));
+        else if (enc === 'br') zlib.brotliDecompress(buf, (err, r) => done(err ? buf : r));
+        else done(buf);
+      });
+    }).on('error', reject);
+  });
+}
+
+function buildClientKey(pageBody) {
+  const tz = 480;
+  const excelNow = Date.now() / 86400000 - tz / 1440 + 25569;
+  const m = pageBody && pageBody.match(/arr\[0\] = '([^']+)'.*?arr\[1\] = '([^']+)'.*?arr\[2\] = '([^']+)'/s);
+  const v0 = m ? m[1] : '4.9';
+  const v1 = m ? m[2] : '37097.4196938132';
+  const v2 = m ? m[3] : '47097.4196938131';
+  return `${v0}|${v1}|${v2}|${tz}|${excelNow.toFixed(10)}|0|0|0`;
+}
+
+async function fetchGoodinfo(path, clientId) {
+  const url = `${GOODINFO_BASE}${path}`;
+  const first = await httpsGet(url, { Referer: `${GOODINFO_BASE}/index.asp` });
+  const reinitMatch = first.body.match(/window\.location\.replace\('([^']+)'\)/);
+  if (!reinitMatch) return first.body;
+  const reinitPath = reinitMatch[1];
+  const reinitUrl = reinitPath.startsWith('http') ? reinitPath : `${GOODINFO_BASE}/${reinitPath}`;
+  const clientKey = buildClientKey(first.body);
+  const cookie = `CLIENT%5FID=${clientId}; CLIENT_KEY=${encodeURIComponent(clientKey)}`;
+  const second = await httpsGet(reinitUrl, { Referer: url, Cookie: cookie });
+  return second.body;
+}
+
+let cachedClientId = null;
+let cacheTime = 0;
+
+async function getClientId() {
+  if (cachedClientId && Date.now() - cacheTime < 60 * 60 * 1000) return cachedClientId;
+  const res = await httpsGet(`${GOODINFO_BASE}/index.asp`);
+  const setCookie = res.headers['set-cookie'];
+  if (setCookie) {
+    for (const c of Array.isArray(setCookie) ? setCookie : [setCookie]) {
+      const m = c.match(/CLIENT(?:%5F|_)ID=([^;]+)/i);
+      if (m) { cachedClientId = m[1]; cacheTime = Date.now(); return cachedClientId; }
+    }
+  }
+  cachedClientId = `${new Date().toISOString().replace(/\D/g, '').slice(0, 17)}_127.0.0.1`;
+  cacheTime = Date.now();
+  return cachedClientId;
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+
+  const { stockId, type, force } = req.query;
+  if (!stockId) return res.status(400).json({ error: 'stockId required' });
+
+  const paths = {
+    basic:       `/StockDetail.asp?STOCK_ID=${stockId}`,
+    dividend:    `/StockDividendPolicy.asp?STOCK_ID=${stockId}`,
+    cashflow:    `/StockFinDetail.asp?STOCK_ID=${stockId}&RPT_CAT=CF_YEAR`,
+    performance: `/StockBzPerformance.asp?STOCK_ID=${stockId}`,
+  };
+
+  const path = paths[type];
+  if (!path) return res.status(400).json({ error: 'invalid type' });
+
+  const cacheKey = `${stockId}/${type}`;
+  const cached = htmlCache.get(cacheKey);
+  if (cached && force !== '1' && Date.now() - cached.time < CACHE_TTL_MS) {
+    return res.json({ html: cached.html, stockId, type, cached: true });
+  }
+
+  try {
+    const clientId = await getClientId();
+    const html = await fetchGoodinfo(path, clientId);
+    if (html.includes('異常連線') || html.includes('鎖定用戶')) {
+      cachedClientId = null;
+      return res.status(429).json({ error: 'goodinfo rate limit — please wait 15min' });
+    }
+    htmlCache.set(cacheKey, { html, time: Date.now() });
+    res.json({ html, stockId, type });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
