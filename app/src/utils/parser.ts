@@ -1,40 +1,11 @@
 import type { Financials, Indicators, ETFFinancials, ETFIndicators, StockSubType, YearData } from '../types';
 
-// Extract table data from goodinfo HTML
-function extractTableRows(html: string, tableId: string): string[][] {
-  const tablePattern = new RegExp(`id="${tableId}"[^>]*>([\\s\\S]*?)</table>`, 'i');
-  const match = html.match(tablePattern);
-  if (!match) return [];
-
-  const rows: string[][] = [];
-  const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let rowMatch;
-
-  while ((rowMatch = rowPattern.exec(match[1])) !== null) {
-    const cells: string[] = [];
-    const cellPattern = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
-    let cellMatch;
-    while ((cellMatch = cellPattern.exec(rowMatch[1])) !== null) {
-      const text = cellMatch[1].replace(/<[^>]+>/g, '').trim();
-      cells.push(text);
-    }
-    if (cells.length > 0) rows.push(cells);
-  }
-  return rows;
-}
-
 function parseNum(s: string): number | null {
   if (!s || s === 'N/A' || s === '--' || s === '') return null;
   const n = parseFloat(s.replace(/,/g, ''));
   return isNaN(n) ? null : n;
 }
 
-// Parse years from header row
-function parseYears(headerCells: string[]): number[] {
-  return headerCells
-    .map((c) => parseInt(c))
-    .filter((y) => !isNaN(y) && y > 1990 && y < 2100);
-}
 
 function toYearData(years: number[], values: (number | null)[]): YearData[] {
   return years.map((year, i) => ({ year, value: values[i] ?? null }));

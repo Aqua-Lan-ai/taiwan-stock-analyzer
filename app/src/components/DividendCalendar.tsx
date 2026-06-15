@@ -104,7 +104,7 @@ export default function DividendCalendar({ stocks }: Props) {
             </thead>
             <tbody>
               {rows.map(({ stock, monthly }, ri) => {
-                const rowTotal = monthly.reduce((sum, v) => sum + (v ?? 0) * (stock.shares || 0), 0);
+                const rowTotal = monthly.reduce<number>((sum, v) => sum + (v ?? 0) * (stock.shares || 0), 0);
                 return (
                   <tr key={stock.id} style={{ background: ri % 2 === 0 ? '#fff' : '#fafafa' }}>
                     <td style={{ padding: '9px 16px', position: 'sticky', left: 0, background: ri % 2 === 0 ? '#fff' : '#fafafa', zIndex: 1, borderRight: '1px solid #f2f2f7' }}>
