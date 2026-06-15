@@ -171,12 +171,12 @@ export default function DividendCalendar({ stocks }: Props) {
                       ) : (
                         // Annual-only payer
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                          <InfoIcon />
                           <span style={{ color: '#10b981', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                             {stock.shares > 0
                               ? `$${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                               : `${(annualValue ?? 0).toFixed(2)} 元`}
                           </span>
-                          <InfoIcon />
                         </div>
                       )}
                     </td>
