@@ -118,26 +118,6 @@ function mergeScheduleDays(
   });
 }
 
-const FINANCIALS_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
-
-// Fetch current price from TWSE MIS API (bypasses goodinfo)
-async function fetchTWSEPrice(stockId: string): Promise<{ price: number | null; name: string | null }> {
-  try {
-    const url = `${API}/proxy?stockId=${stockId}&type=twse_price`;
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.error) return { price: null, name: null };
-    const row = JSON.parse(json.html ?? '{}');
-    // z = current trade price, y = previous close (fallback when market closed)
-    const raw = row.z && row.z !== '--' ? row.z : row.y;
-    const price = raw ? parseFloat(raw.replace(/,/g, '')) : null;
-    const name = row.n ?? null;
-    return { price: isNaN(price ?? NaN) ? null : price, name };
-  } catch {
-    return { price: null, name: null };
-  }
-}
-
 async function fetchTWSEFallback(stockId: string, cashDividend: YearData[], force: boolean): Promise<DividendPayment[]> {
   const years = cashDividend
     .filter((d) => d.value !== null && d.value > 0)
