@@ -11,15 +11,26 @@ function getAvailableYears(stocks: Stock[]): number[] {
   const years = new Set<number>();
   for (const s of stocks) {
     const payments = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
-    if (payments.length > 0) {
-      payments.forEach((p) => years.add(p.year));
-    } else {
-      // No monthly breakdown — fall back to annual cashDividend years for this stock
-      const annual = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
-      annual.filter((d) => d.value !== null && d.value > 0).forEach((d) => years.add(d.year));
-    }
+    payments.forEach((p) => years.add(p.year));
+    // Always include annual cashDividend years so every stock's years are navigable
+    const annual = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
+    annual.filter((d) => (d.value ?? 0) > 0).forEach((d) => years.add(d.year));
   }
   return Array.from(years).sort((a, b) => b - a);
+}
+
+function getBestYear(stocks: Stock[], allYears: number[]): number {
+  if (allYears.length === 0) return new Date().getFullYear();
+  // Find most recent year where every stock has at least some dividend data
+  for (const y of allYears) {
+    const allCovered = stocks.every((s) => {
+      const payments = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
+      const annual = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
+      return payments.some((p) => p.year === y) || annual.some((d) => d.year === y && (d.value ?? 0) > 0);
+    });
+    if (allCovered) return y;
+  }
+  return allYears[0]; // fallback: most recent even if not all stocks covered
 }
 
 function InfoIcon() {
@@ -38,7 +49,8 @@ export default function DividendCalendar({ stocks }: Props) {
   const allYears = getAvailableYears(selected);
   const [pinnedYear, setPinnedYear] = useState<number | null>(null);
 
-  const year = pinnedYear && allYears.includes(pinnedYear) ? pinnedYear : (allYears[0] ?? new Date().getFullYear());
+  const defaultYear = getBestYear(selected, allYears);
+  const year = pinnedYear && allYears.includes(pinnedYear) ? pinnedYear : defaultYear;
   const yearIdx = allYears.indexOf(year);
 
   const allRows = selected

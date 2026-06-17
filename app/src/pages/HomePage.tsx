@@ -148,7 +148,7 @@ export default function HomePage() {
                 <button
                   onClick={() => selectAll(!allSelected)}
                   style={{
-                    flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                    flexShrink: 0, width: 26, height: 26, borderRadius: 7,
                     border: `2px solid ${someSelected ? '#0071e3' : '#d1d1d6'}`,
                     background: allSelected ? '#0071e3' : someSelected ? '#e8f0fe' : '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -156,11 +156,11 @@ export default function HomePage() {
                   }}
                 >
                   {allSelected ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : someSelected ? (
-                    <div style={{ width: 10, height: 2, background: '#0071e3', borderRadius: 1 }} />
+                    <div style={{ width: 12, height: 2, background: '#0071e3', borderRadius: 1 }} />
                   ) : null}
                 </button>
                 <span style={{ fontSize: 13, color: '#6e6e73' }}>
@@ -211,7 +211,7 @@ export default function HomePage() {
                   <button
                     onClick={() => toggleSelected(stock.id)}
                     style={{
-                      flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                      flexShrink: 0, width: 26, height: 26, borderRadius: 7,
                       border: `2px solid ${stock.selected ? '#0071e3' : '#d1d1d6'}`,
                       background: stock.selected ? '#0071e3' : '#fff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -219,7 +219,7 @@ export default function HomePage() {
                     }}
                   >
                     {stock.selected && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     )}
