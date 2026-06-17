@@ -30,11 +30,23 @@ export function parseStockPrice(html: string): number | null {
 }
 
 export function parseLatestBPS(html: string): number | null {
-  // StockDetail.asp: find 每股淨值 label then next numeric td
-  const m = html.match(/每股淨值[\s\S]{0,400}?<td[^>]*>([\d,]+(?:\.\d+)?)<\/td>/);
-  if (m) {
-    const n = parseFloat(m[1].replace(/,/g, ''));
-    if (!isNaN(n) && n > 0 && n < 10000) return n;
+  // Walk every <tr> and find one containing 每股淨值, then extract all numeric values from it
+  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let trm: RegExpExecArray | null;
+  while ((trm = trRe.exec(html)) !== null) {
+    const row = trm[1];
+    if (!row.includes('每股淨值')) continue;
+    // Extract text from all tds in this row
+    const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    let tdm: RegExpExecArray | null;
+    let passedLabel = false;
+    while ((tdm = tdRe.exec(row)) !== null) {
+      const text = tdm[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+      if (text.includes('每股淨值')) { passedLabel = true; continue; }
+      if (!passedLabel) continue;
+      const n = parseFloat(text.replace(/,/g, ''));
+      if (!isNaN(n) && n >= 1 && n < 5000) return n;
+    }
   }
   return null;
 }
