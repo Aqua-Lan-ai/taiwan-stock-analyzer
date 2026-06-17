@@ -165,7 +165,7 @@ export default function StockDetailPage() {
           <>
             {stock.financials && (
               <Section title="估價區間">
-                <ValuationCard cashDividend={stock.financials.cashDividend} eps={stock.financials.eps} bps={stock.financials.bps} price={stock.price} subType={stock.subType ?? null} />
+                <ValuationCard cashDividend={stock.financials.cashDividend} eps={stock.financials.eps} bps={stock.financials.bps ?? []} price={stock.price} subType={stock.subType ?? null} />
               </Section>
             )}
 

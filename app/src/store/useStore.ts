@@ -85,7 +85,7 @@ export const useStore = create<StoreState>()(
               let score = s.score;
               if (s.etfFinancials) {
                 const merged = { ...s.etfFinancials, aum, expenseRatio };
-                score = calcETFScore(evaluateETFIndicators(merged, state.settings.buyYield, s.price));
+                score = calcETFScore(evaluateETFIndicators(merged, 4, s.price));
               }
               return { ...s, etfAUM: aum, etfExpenseRatio: expenseRatio, score };
             }),

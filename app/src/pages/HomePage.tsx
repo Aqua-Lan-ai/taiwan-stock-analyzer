@@ -24,7 +24,7 @@ function liveSecondary(s: Stock): string | null {
   }
   if (s.financials) {
     if (s.subType === 'financial') {
-      const latestBps = [...s.financials.bps].filter((d) => (d.value ?? 0) > 0).sort((a, b) => b.year - a.year)[0]?.value ?? null;
+      const latestBps = [...(s.financials.bps ?? [])].filter((d) => (d.value ?? 0) > 0).sort((a, b) => b.year - a.year)[0]?.value ?? null;
       const fair = latestBps ? Math.round(latestBps) : null;
       return fair ? `合理價 $${fair}` : null;
     }

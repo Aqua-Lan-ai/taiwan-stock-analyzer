@@ -19,6 +19,7 @@ function makeRows(financials: Financials, tableType: TableType, years: number): 
         { label: 'ROE (%)', data: trim(financials.roe) },
         { label: '毛利率 (%)', data: trim(financials.grossMargin) },
         { label: '營益率 (%)', data: trim(financials.operatingMargin) },
+        ...(financials.bps?.some((d) => d.value !== null) ? [{ label: '每股淨值 (元)', data: trim(financials.bps) }] : []),
       ];
     case '損益表':
       return [
