@@ -26,7 +26,9 @@ async function fetchTWSEYear(year: number, force = false): Promise<string> {
   return json.html ?? '';
 }
 
-// If goodinfo has no sub-row month data, try to supplement from StockDetail.asp 除息交易日
+// If goodinfo has no sub-row month data, supplement using 除息交易日 from StockDetail.asp.
+// The current year's announced month is applied to all historical years (annual payers
+// tend to have a consistent ex-dividend month year over year).
 function supplementFromBasic(
   payments: DividendPayment[],
   cashDividend: YearData[],
@@ -35,9 +37,10 @@ function supplementFromBasic(
   if (payments.length > 0) return payments;
   const exDate = parseExDividendDate(basicHtml);
   if (!exDate) return payments;
-  const annual = cashDividend.find((d) => d.year === exDate.year);
-  if (!annual?.value || annual.value <= 0) return payments;
-  return [{ year: exDate.year, month: exDate.month, amount: annual.value }];
+  // Apply the same month to all years that have a cash dividend value
+  return cashDividend
+    .filter((d) => d.value !== null && d.value > 0)
+    .map((d) => ({ year: d.year, month: exDate.month, amount: d.value as number }));
 }
 
 async function fetchTWSEFallback(stockId: string, cashDividend: YearData[], force: boolean): Promise<DividendPayment[]> {
