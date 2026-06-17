@@ -181,8 +181,17 @@ export function parseETFBasic(html: string): Pick<ETFFinancials, 'nav' | 'premiu
     premium = parseFloat(navCell[2].replace('%', ''));
   }
 
-  // expenseRatio and aum are not available on StockDetail.asp — return null
-  return { nav, premium, expenseRatio: null, aum: null };
+  // AUM from 市值 field (e.g. "市值 7,002.05億")
+  const aumMatch = html.match(/市值[\s\S]{0,50}?([\d,]+(?:\.\d+)?)億/);
+  const aum = aumMatch ? parseFloat(aumMatch[1].replace(/,/g, '')) : null;
+
+  // Rough expense ratio estimate based on AUM (for reference only)
+  const expenseRatio = aum === null ? null
+    : aum >= 1000 ? 0.55
+    : aum >= 100  ? 0.65
+    : 0.85;
+
+  return { nav, premium, expenseRatio, aum };
 }
 
 export function evaluateETFIndicators(

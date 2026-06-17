@@ -11,7 +11,9 @@ interface Props {
 
 export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpenseRatio, onMetaChange }: Props) {
   const aum = etfAUM ?? etfFinancials.aum;
+  const isAUMAutoDetected = etfAUM === null && etfFinancials.aum !== null;
   const expenseRatio = etfExpenseRatio ?? etfFinancials.expenseRatio;
+  const isExpenseEstimated = etfExpenseRatio === null && etfFinancials.expenseRatio !== null;
   const { settings } = useStore();
 
   const recentDivs = [...etfFinancials.cashDividend]
@@ -128,6 +130,7 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
             </div>
             <p style={{ fontSize: 11, marginTop: 6, color: aum !== null ? (aum >= 100 ? '#10b981' : '#ff9500') : '#aeaeb2' }}>
               {aum !== null ? (aum >= 100 ? '規模充足' : '規模偏小') : '請填寫'}
+              {isAUMAutoDetected && <span style={{ color: '#aeaeb2', marginLeft: 3 }}>(自動)</span>}
             </p>
           </div>
 
@@ -148,6 +151,7 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
             </div>
             <p style={{ fontSize: 11, marginTop: 6, color: expenseRatio !== null ? (expenseRatio <= 0.5 ? '#10b981' : '#ff9500') : '#aeaeb2' }}>
               {expenseRatio !== null ? (expenseRatio <= 0.5 ? '費用合理' : '費用偏高') : '請填寫'}
+              {isExpenseEstimated && <span style={{ color: '#aeaeb2', marginLeft: 3 }}>(估算)</span>}
             </p>
           </div>
 
