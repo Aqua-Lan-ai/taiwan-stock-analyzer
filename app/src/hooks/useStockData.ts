@@ -227,15 +227,15 @@ function parseDividendRows(html: string): {
       if (days !== null && entry.days === null) entry.days = days;
     } else if (currentYear !== null) {
       // Sub-distribution row: r[0] = "∟MM/DD" (ex-date without year)
-      // Require the ∟ prefix so rows from other tables aren't misread
-      if (!r[0].includes('∟')) continue;
+      // Skip rows with "未定" (TBD) — not yet announced
       if (r[0].includes('未定')) continue;
       const monthMatch = r[0].match(/(\d{1,2})\/\d{1,2}/);
       if (monthMatch) {
         const month = parseInt(monthMatch[1]);
         const amount = parseNum(r[4]);
         const key = `${currentYear}-${month}`;
-        if (amount && amount > 0 && month >= 1 && month <= 12 && !seen.has(key)) {
+        // amount < 100: per-share dividend never exceeds 100 TWD; filters stray rows from other tables
+        if (amount && amount > 0 && amount < 100 && month >= 1 && month <= 12 && !seen.has(key)) {
           seen.add(key);
           payments.push({ year: currentYear, month, amount });
         }
