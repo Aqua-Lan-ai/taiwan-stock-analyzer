@@ -13,14 +13,19 @@ function avg3(arr: YearData[]): number | null {
   return recent.reduce((s, d) => s + (d.value ?? 0), 0) / recent.length;
 }
 
-function liveFairPrice(s: Stock): number | null {
+function liveSecondary(s: Stock): string | null {
   if (s.type === 'etf' && s.etfFinancials) {
-    const avg = avg3(s.etfFinancials.cashDividend);
-    return avg ? Math.round(avg / 0.04) : null;
+    const nav = s.etfFinancials.nav;
+    const price = s.price;
+    if (!nav || !price) return null;
+    const pct = ((price - nav) / nav) * 100;
+    const sign = pct >= 0 ? '+' : '';
+    return `${pct >= 0 ? '溢價' : '折價'} ${sign}${pct.toFixed(2)}%`;
   }
   if (s.financials) {
     const avgEps = avg3(s.financials.eps.filter((d) => (d.value ?? 0) > 0));
-    return avgEps ? Math.round(avgEps * 20) : null;
+    const fair = avgEps ? Math.round(avgEps * 20) : null;
+    return fair ? `合理價 $${fair}` : null;
   }
   return null;
 }
@@ -237,12 +242,12 @@ export default function HomePage() {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: '#aeaeb2', marginTop: 2, display: 'flex', alignItems: 'center', gap: 0 }}>
+                      <div style={{ fontSize: 12, color: '#aeaeb2', marginTop: 2, display: 'flex', alignItems: 'center' }}>
                         <span>{stock.price ? `現價 $${stock.price}` : '尚未載入'}</span>
                         {(() => {
-                          const fair = liveFairPrice(stock);
-                          if (!fair) return null;
-                          return <><span style={{ margin: '0 8px' }}>|</span><span>合理價 ${fair}</span></>;
+                          const secondary = liveSecondary(stock);
+                          if (!secondary) return null;
+                          return <><span style={{ margin: '0 8px' }}>|</span><span>{secondary}</span></>;
                         })()}
                       </div>
                     </div>
