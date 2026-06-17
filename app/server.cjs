@@ -147,6 +147,7 @@ app.get('/api/proxy', async (req, res) => {
   const paths = {
     basic:       `/StockDetail.asp?STOCK_ID=${stockId}`,
     dividend:    `/StockDividendPolicy.asp?STOCK_ID=${stockId}`,
+    schedule:    `/StockDividendSchedule.asp?STOCK_ID=${stockId}`,
     exdate:      `/StockDividend.asp?STOCK_ID=${stockId}`,
     cashflow:    `/StockFinDetail.asp?STOCK_ID=${stockId}&RPT_CAT=CF_YEAR`,
     performance: `/StockBzPerformance.asp?STOCK_ID=${stockId}`,
