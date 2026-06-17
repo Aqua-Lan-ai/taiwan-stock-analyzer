@@ -21,16 +21,22 @@ function getAvailableYears(stocks: Stock[]): number[] {
 
 function getBestYear(stocks: Stock[], allYears: number[]): number {
   if (allYears.length === 0) return new Date().getFullYear();
-  // Find most recent year where every stock has at least some dividend data
+  // Pass 1: most recent year where ALL stocks have monthly payment data
   for (const y of allYears) {
-    const allCovered = stocks.every((s) => {
-      const payments = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
-      const annual = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
-      return payments.some((p) => p.year === y) || annual.some((d) => d.year === y && (d.value ?? 0) > 0);
-    });
-    if (allCovered) return y;
+    if (stocks.every((s) => {
+      const p = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
+      return p.some((x) => x.year === y);
+    })) return y;
   }
-  return allYears[0]; // fallback: most recent even if not all stocks covered
+  // Pass 2: most recent year where ALL stocks have at least cashDividend data
+  for (const y of allYears) {
+    if (stocks.every((s) => {
+      const p = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
+      const a = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
+      return p.some((x) => x.year === y) || a.some((d) => d.year === y && (d.value ?? 0) > 0);
+    })) return y;
+  }
+  return allYears[0];
 }
 
 function InfoIcon() {
