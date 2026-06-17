@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { ETFFinancials } from '../types';
 import { evaluateETFIndicators } from '../utils/parser';
-import { useStore } from '../store/useStore';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -52,7 +51,6 @@ function IndicatorRow({ label, desc, pass, unknown }: { label: string; desc: str
 }
 
 export default function ETFDetailSection({ etfFinancials, years, etfAUM, etfExpenseRatio, price }: Props) {
-  const { settings } = useStore();
   const [tab, setTab] = useState<'配息' | '填息'>('配息');
 
   const dividendData = [...etfFinancials.cashDividend]
@@ -65,7 +63,7 @@ export default function ETFDetailSection({ etfFinancials, years, etfAUM, etfExpe
 
   // Merge manual overrides, then evaluate all 5 indicators consistently
   const merged = { ...etfFinancials, aum: etfAUM ?? etfFinancials.aum, expenseRatio: etfExpenseRatio ?? etfFinancials.expenseRatio };
-  const etfIndicators = evaluateETFIndicators(merged, settings.buyYield, price);
+  const etfIndicators = evaluateETFIndicators(merged, 4, price);
 
   const indicators = [
     { key: '連續配息',   pass: etfIndicators.連續配息,   unknown: false },
