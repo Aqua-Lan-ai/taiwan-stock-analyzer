@@ -111,12 +111,12 @@ export default function DividendCalendar({ stocks }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f2f2f7' }}>
         <div>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#1d1d1f', margin: 0 }}>股利日曆</h2>
-          {hasShares && yearTotal > 0 && (
-            <p style={{ fontSize: 12, color: '#86868b', marginTop: 2 }}>
-              {year} 年預估收入 <span style={{ color: '#10b981', fontWeight: 600 }}>${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-            </p>
-          )}
-          <p style={{ fontSize: 11, color: '#aeaeb2', marginTop: 2 }}>以下資料為除息月份</p>
+          <p style={{ fontSize: 12, color: '#86868b', marginTop: 2 }}>
+            {hasShares && yearTotal > 0 && (
+              <>{year} 年預估收入 <span style={{ color: '#10b981', fontWeight: 600 }}>${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span> · </>
+            )}
+            <span style={{ color: '#aeaeb2' }}>以下資料為除息月份</span>
+          </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
