@@ -81,6 +81,32 @@ export default async function handler(req, res) {
 
   const { stockId, type, force } = req.query;
 
+  // TWSE real-time price: no goodinfo needed
+  if (type === 'twse_price') {
+    if (!stockId) return res.status(400).json({ error: 'stockId required' });
+    const cacheKey = `twse_price/${stockId}`;
+    const cached = htmlCache.get(cacheKey);
+    const PRICE_TTL = 5 * 60 * 1000; // 5 min
+    if (cached && force !== '1' && Date.now() - cached.time < PRICE_TTL) {
+      return res.json({ html: cached.html, cached: true });
+    }
+    try {
+      let info = null;
+      for (const ex of ['tse', 'otc']) {
+        const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${ex}_${stockId}.tw&json=1&delay=0`;
+        const result = await httpsGet(url, { Referer: 'https://mis.twse.com.tw/', Accept: 'application/json' });
+        const json = JSON.parse(result.body);
+        const row = json.msgArray?.find(r => r.c === stockId);
+        if (row) { info = row; break; }
+      }
+      const html = JSON.stringify(info ?? {});
+      htmlCache.set(cacheKey, { html, time: Date.now() });
+      return res.json({ html });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // TWSE ex-dividend table: year-based query, no goodinfo REINIT needed
   if (type === 'twse_ex') {
     const { year } = req.query;
