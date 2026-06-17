@@ -26,18 +26,56 @@ async function fetchTWSEYear(year: number, force = false): Promise<string> {
   return json.html ?? '';
 }
 
-// If goodinfo has no sub-row month data, supplement using 除息交易日 from StockDetail.asp.
-// The current year's announced month is applied to all historical years (annual payers
-// tend to have a consistent ex-dividend month year over year).
-function supplementFromBasic(
+// Parse StockDividendSchedule.asp rows → Map<year, month>
+// Row format: col[0]=payout year (AD 4-digit), col[2]=ex-date "'YY/MM/DD"
+function parseScheduleMonths(html: string): Map<number, number> {
+  const map = new Map<number, number>();
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let rm: RegExpExecArray | null;
+  while ((rm = rowRe.exec(html)) !== null) {
+    const cellRe = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+    const cells: string[] = [];
+    let cm: RegExpExecArray | null;
+    while ((cm = cellRe.exec(rm[1])) !== null) {
+      cells.push(cm[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
+    }
+    if (cells.length < 3) continue;
+    const year = parseInt(cells[0]);
+    if (isNaN(year) || year < 2000 || year > 2100) continue;
+    // ex-date format: "'25/06/19" — strip leading apostrophe
+    const parts = cells[2].replace(/^'/, '').split('/');
+    if (parts.length !== 3) continue;
+    const month = parseInt(parts[1]);
+    if (isNaN(month) || month < 1 || month > 12) continue;
+    if (!map.has(year)) map.set(year, month);
+  }
+  return map;
+}
+
+// If goodinfo StockDividendPolicy has no sub-row months, supplement from schedule page.
+// Falls back to StockDetail 除息交易日 if schedule also has no data.
+function supplementFromSchedule(
   payments: DividendPayment[],
   cashDividend: YearData[],
+  scheduleMonths: Map<number, number>,
   basicHtml: string,
 ): DividendPayment[] {
   if (payments.length > 0) return payments;
+
+  // Use schedule page months (year-specific, most accurate)
+  if (scheduleMonths.size > 0) {
+    const result: DividendPayment[] = [];
+    for (const d of cashDividend) {
+      if (d.value === null || d.value <= 0) continue;
+      const month = scheduleMonths.get(d.year);
+      if (month) result.push({ year: d.year, month, amount: d.value });
+    }
+    if (result.length > 0) return result;
+  }
+
+  // Fallback: apply current-year's month from 除息交易日 to all historical years
   const exDate = parseExDividendDate(basicHtml);
   if (!exDate) return payments;
-  // Apply the same month to all years that have a cash dividend value
   return cashDividend
     .filter((d) => d.value !== null && d.value > 0)
     .map((d) => ({ year: d.year, month: exDate.month, amount: d.value as number }));
@@ -210,17 +248,19 @@ export function useStockData() {
 
     try {
       if (isETF) {
-        // ETF: fetch basic + dividend policy
-        const [basicHtml, divHtml] = await Promise.all([
+        // ETF: fetch basic + dividend policy + schedule in parallel
+        const [basicHtml, divHtml, schedHtml] = await Promise.all([
           fetchProxy(stockId, 'basic', force),
           fetchProxy(stockId, 'dividend', force),
+          fetchProxy(stockId, 'schedule', force),
         ]);
 
         const name = parseStockName(basicHtml);
         const price = parseStockPrice(basicHtml);
         const { cashDividend, dividendDays, dividendPayments: rawPayments } = parseDividendRows(divHtml);
-        const afterBasic = supplementFromBasic(rawPayments, cashDividend, basicHtml);
-        const dividendPayments = afterBasic.length > 0 ? afterBasic : await fetchTWSEFallback(stockId, cashDividend, force);
+        const scheduleMonths = parseScheduleMonths(schedHtml);
+        const afterSched = supplementFromSchedule(rawPayments, cashDividend, scheduleMonths, basicHtml);
+        const dividendPayments = afterSched.length > 0 ? afterSched : await fetchTWSEFallback(stockId, cashDividend, force);
         const etfBasic = parseETFBasic(basicHtml);
 
         const etfFinancials: ETFFinancials = {
@@ -253,11 +293,12 @@ export function useStockData() {
 
       } else {
         // Individual stock: fetch all endpoints in parallel
-        const [basicHtml, perfHtml, cfHtml, divHtml] = await Promise.all([
+        const [basicHtml, perfHtml, cfHtml, divHtml, schedHtml] = await Promise.all([
           fetchProxy(stockId, 'basic', force),
           fetchProxy(stockId, 'performance', force),
           fetchProxy(stockId, 'cashflow', force),
           fetchProxy(stockId, 'dividend', force),
+          fetchProxy(stockId, 'schedule', force),
         ]);
 
         const name = parseStockName(basicHtml);
@@ -266,8 +307,9 @@ export function useStockData() {
         const perf = parsePerformanceRows(perfHtml);
         const { cfo, capex } = parseCashFlowRows(cfHtml);
         const { cashDividend, dividendDays, dividendPayments: rawPayments } = parseDividendRows(divHtml);
-        const afterBasic = supplementFromBasic(rawPayments, cashDividend, basicHtml);
-        const dividendPayments = afterBasic.length > 0 ? afterBasic : await fetchTWSEFallback(stockId, cashDividend, force);
+        const scheduleMonths = parseScheduleMonths(schedHtml);
+        const afterSched = supplementFromSchedule(rawPayments, cashDividend, scheduleMonths, basicHtml);
+        const dividendPayments = afterSched.length > 0 ? afterSched : await fetchTWSEFallback(stockId, cashDividend, force);
 
         const freeCashFlow: YearData[] = cfo.map((d) => {
           const k = capex.find((c) => c.year === d.year)?.value;

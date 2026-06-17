@@ -107,6 +107,7 @@ export default async function handler(req, res) {
     dividend:    `/StockDividendPolicy.asp?STOCK_ID=${stockId}`,
     cashflow:    `/StockFinDetail.asp?STOCK_ID=${stockId}&RPT_CAT=CF_YEAR`,
     performance: `/StockBzPerformance.asp?STOCK_ID=${stockId}`,
+    schedule:    `/StockDividendSchedule.asp?STOCK_ID=${stockId}`,
   };
 
   const path = paths[type];
