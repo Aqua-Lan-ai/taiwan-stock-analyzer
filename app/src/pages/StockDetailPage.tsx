@@ -45,7 +45,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function StockDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { stocks, settings, updateETFMeta } = useStore();
+  const { stocks, updateETFMeta } = useStore();
   const { fetchStockData, loading, error } = useStockData();
 
   const stock = stocks.find((s) => s.id === id);
@@ -56,7 +56,7 @@ export default function StockDetailPage() {
     if (!stock) return 0;
     if (isETF && stock.etfFinancials) {
       const merged = { ...stock.etfFinancials, aum: stock.etfAUM, expenseRatio: stock.etfExpenseRatio };
-      return calcETFScore(evaluateETFIndicators(merged, settings.buyYield, stock.price));
+      return calcETFScore(evaluateETFIndicators(merged, 4, stock.price));
     }
     return stock.score;
   })();
@@ -151,7 +151,7 @@ export default function StockDetailPage() {
             <Section title="五項指標 & 配息分析">
               <ETFDetailSection
                 etfFinancials={stock.etfFinancials}
-                years={settings.years}
+                years={10}
                 etfAUM={stock.etfAUM ?? null}
                 etfExpenseRatio={stock.etfExpenseRatio ?? null}
                 price={stock.price}
@@ -186,14 +186,14 @@ export default function StockDetailPage() {
               <>
                 <Section title="圖表分析">
                   <div className="space-y-4">
-                    <ProfitROEChart netProfit={stock.financials.netProfit} roe={stock.financials.roe} years={settings.years} />
-                    <FreeCashFlowChart freeCashFlow={stock.financials.freeCashFlow} years={settings.years} />
-                    <DividendChart cashDividend={stock.financials.cashDividend} payoutRatio={stock.financials.payoutRatio} eps={stock.financials.eps} years={settings.years} />
+                    <ProfitROEChart netProfit={stock.financials.netProfit} roe={stock.financials.roe} years={10} />
+                    <FreeCashFlowChart freeCashFlow={stock.financials.freeCashFlow} years={10} />
+                    <DividendChart cashDividend={stock.financials.cashDividend} payoutRatio={stock.financials.payoutRatio} eps={stock.financials.eps} years={10} />
                   </div>
                 </Section>
                 <Section title="財務資料">
                   <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                    <DataTable financials={stock.financials} years={settings.years} />
+                    <DataTable financials={stock.financials} years={10} />
                   </div>
                 </Section>
               </>

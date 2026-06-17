@@ -1,5 +1,6 @@
-import { useStore } from '../store/useStore';
 import type { ETFFinancials } from '../types';
+
+const YIELD = 4; // fixed 4%
 
 interface Props {
   etfFinancials: ETFFinancials;
@@ -14,8 +15,6 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
   const isAUMAutoDetected = etfAUM === null && etfFinancials.aum !== null;
   const expenseRatio = etfExpenseRatio ?? etfFinancials.expenseRatio;
   const isExpenseEstimated = etfExpenseRatio === null && etfFinancials.expenseRatio !== null;
-  const { settings } = useStore();
-
   const recentDivs = [...etfFinancials.cashDividend]
     .filter((d) => d.value !== null)
     .sort((a, b) => b.year - a.year)
@@ -26,11 +25,11 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
     : null;
 
   const currentYield = price && avgDiv ? (avgDiv / price) * 100 : null;
-  const yieldReached = currentYield !== null && currentYield >= settings.buyYield;
-  const yieldGap = currentYield !== null ? currentYield - settings.buyYield : null;
+  const yieldReached = currentYield !== null && currentYield >= YIELD;
+  const yieldGap = currentYield !== null ? currentYield - YIELD : null;
 
-  const buyPrice = avgDiv && settings.buyYield > 0
-    ? Math.round((avgDiv / (settings.buyYield / 100)))
+  const buyPrice = avgDiv && YIELD > 0
+    ? Math.round((avgDiv / (YIELD / 100)))
     : null;
 
   const { nav, premium } = etfFinancials;
@@ -54,7 +53,7 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
           </p>
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#86868b' }}>
-              <span>目標 {settings.buyYield}%</span>
+              <span>目標 {YIELD}%</span>
               {yieldGap !== null && (
                 <span style={{ color: yieldReached ? '#10b981' : '#ff3b30', fontWeight: 500 }}>
                   {yieldReached ? '已達標' : `差 ${Math.abs(yieldGap).toFixed(2)}%`}
@@ -64,7 +63,7 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
             <div style={{ height: 4, background: '#f2f2f7', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{
                 height: '100%',
-                width: `${Math.min(100, currentYield ? (currentYield / settings.buyYield) * 100 : 0).toFixed(1)}%`,
+                width: `${Math.min(100, currentYield ? (currentYield / YIELD) * 100 : 0).toFixed(1)}%`,
                 background: yieldReached ? '#10b981' : '#0071e3',
                 borderRadius: 2,
               }} />
@@ -161,7 +160,7 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
             <p style={{ fontSize: 18, fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.01em', lineHeight: '38px' }}>
               {buyPrice !== null ? `$${buyPrice}` : '--'}
             </p>
-            <p style={{ fontSize: 11, color: '#aeaeb2', marginTop: 6 }}>殖利率 {settings.buyYield}%</p>
+            <p style={{ fontSize: 11, color: '#aeaeb2', marginTop: 6 }}>殖利率 {YIELD}%</p>
           </div>
         </div>
       </div>

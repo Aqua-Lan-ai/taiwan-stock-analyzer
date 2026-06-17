@@ -199,7 +199,7 @@ function parseDividendRows(html: string): {
 export function useStockData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { settings, updateStock } = useStore();
+  const { updateStock } = useStore();
 
   const fetchStockData = useCallback(async (stockId: string, force = false) => {
     setLoading(true);
@@ -230,7 +230,7 @@ export function useStockData() {
           ...etfBasic,
         };
 
-        const etfIndicators = evaluateETFIndicators(etfFinancials, settings.buyYield, price);
+        const etfIndicators = evaluateETFIndicators(etfFinancials, 4, price);
         const score = calcETFScore(etfIndicators);
 
         // Store ETF indicators in the indicators field (same shape, different keys)
@@ -298,7 +298,7 @@ export function useStockData() {
           dividendPayments,
         };
 
-        const indicators = evaluateIndicators(financials, Math.min(settings.years, 5), subType);
+        const indicators = evaluateIndicators(financials, 5, subType);
         const score = calcScore(indicators);
 
         updateStock(stockId, {
@@ -317,7 +317,7 @@ export function useStockData() {
     } finally {
       setLoading(false);
     }
-  }, [settings.buyYield, settings.years, updateStock]);
+  }, [updateStock]);
 
   return { fetchStockData, loading, error };
 }

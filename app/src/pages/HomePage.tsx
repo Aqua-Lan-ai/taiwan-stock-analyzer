@@ -7,11 +7,13 @@ import DividendCalendar from '../components/DividendCalendar';
 import { evaluateETFIndicators, calcETFScore } from '../utils/parser';
 import type { Stock } from '../types';
 
+const YIELD = 4;
+
 const SF = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { stocks, settings, removeStock, updateSettings, toggleSelected, selectAll, updateShares, reorderStocks } = useStore();
+  const { stocks, removeStock, toggleSelected, selectAll, updateShares, reorderStocks } = useStore();
   const { fetchStockData, loading, error } = useStockData();
   const [input, setInput] = useState('');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export default function HomePage() {
   function liveScore(s: Stock): number {
     if (s.type === 'etf' && s.etfFinancials) {
       const merged = { ...s.etfFinancials, aum: s.etfAUM, expenseRatio: s.etfExpenseRatio };
-      return calcETFScore(evaluateETFIndicators(merged, settings.buyYield, s.price));
+      return calcETFScore(evaluateETFIndicators(merged, YIELD, s.price));
     }
     return s.score;
   }
@@ -52,12 +54,7 @@ export default function HomePage() {
         borderBottom: '1px solid rgba(0,0,0,0.08)',
         position: 'sticky', top: 0, zIndex: 50,
       }}>
-        {/* Title row */}
-        <div style={{
-          maxWidth: 896, margin: '0 auto', padding: '12px 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(0,0,0,0.05)',
-        }}>
+        <div style={{ maxWidth: 896, margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1 style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.01em', margin: 0 }}>
               台股存股分析
@@ -65,45 +62,6 @@ export default function HomePage() {
             <p style={{ fontSize: 12, color: '#86868b', marginTop: 2, marginBottom: 0 }}>包租公選股五項指標</p>
           </div>
           <span style={{ fontSize: 12, color: '#aeaeb2' }}>v1.0</span>
-        </div>
-
-        {/* Settings row */}
-        <div style={{
-          maxWidth: 896, margin: '0 auto', padding: '10px 24px',
-          display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#aeaeb2', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            全域參數
-          </span>
-          {([
-            { label: '買進殖利率', key: 'buyYield' as const, color: '#34c759', step: '0.1', unit: '%' },
-            { label: '賣出殖利率', key: 'sellYield' as const, color: '#ff3b30', step: '0.1', unit: '%' },
-          ] as const).map(({ label, key, color, step, unit }) => (
-            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <span style={{ color: '#6e6e73' }}>{label}</span>
-              <div style={{ display: 'flex', alignItems: 'center', background: '#f5f5f7', borderRadius: 8, padding: '3px 10px', gap: 3 }}>
-                <input
-                  type="number" step={step}
-                  value={settings[key]}
-                  onChange={(e) => updateSettings({ [key]: parseFloat(e.target.value) })}
-                  style={{ width: 44, border: 'none', background: 'transparent', textAlign: 'center', color, fontWeight: 600, fontSize: 14, outline: 'none' }}
-                />
-                <span style={{ color: '#aeaeb2', fontSize: 13 }}>{unit}</span>
-              </div>
-            </label>
-          ))}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ color: '#6e6e73' }}>顯示年數</span>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#f5f5f7', borderRadius: 8, padding: '3px 10px', gap: 3 }}>
-              <input
-                type="number" min="1" max="20"
-                value={settings.years}
-                onChange={(e) => updateSettings({ years: parseInt(e.target.value) })}
-                style={{ width: 36, border: 'none', background: 'transparent', textAlign: 'center', color: '#1d1d1f', fontWeight: 600, fontSize: 14, outline: 'none' }}
-              />
-              <span style={{ color: '#aeaeb2', fontSize: 13 }}>年</span>
-            </div>
-          </label>
         </div>
       </header>
 
