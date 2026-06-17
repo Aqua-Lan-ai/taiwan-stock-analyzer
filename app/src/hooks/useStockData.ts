@@ -299,7 +299,8 @@ export function useStockData() {
           name,
           price,
           etfFinancials,
-          // Keep stock indicators as all-false; ETF indicators stored separately via etfFinancials
+          etfAUM: etfBasic.aum,
+          etfExpenseRatio: etfBasic.expenseRatio,
           indicators: {
             景氣循環: etfIndicators.連續配息,
             現金股利: etfIndicators.殖利率達標,

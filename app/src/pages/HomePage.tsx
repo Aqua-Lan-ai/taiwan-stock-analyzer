@@ -49,7 +49,7 @@ export default function HomePage() {
 
   function liveScore(s: Stock): number {
     if (s.type === 'etf' && s.etfFinancials) {
-      const merged = { ...s.etfFinancials, aum: s.etfAUM, expenseRatio: s.etfExpenseRatio };
+      const merged = { ...s.etfFinancials, aum: s.etfAUM ?? s.etfFinancials.aum, expenseRatio: s.etfExpenseRatio ?? s.etfFinancials.expenseRatio };
       return calcETFScore(evaluateETFIndicators(merged, YIELD, s.price));
     }
     return s.score;

@@ -55,7 +55,11 @@ export default function StockDetailPage() {
   const displayScore = (() => {
     if (!stock) return 0;
     if (isETF && stock.etfFinancials) {
-      const merged = { ...stock.etfFinancials, aum: stock.etfAUM, expenseRatio: stock.etfExpenseRatio };
+      const merged = {
+        ...stock.etfFinancials,
+        aum: stock.etfAUM ?? stock.etfFinancials.aum,
+        expenseRatio: stock.etfExpenseRatio ?? stock.etfFinancials.expenseRatio,
+      };
       return calcETFScore(evaluateETFIndicators(merged, 4, stock.price));
     }
     return stock.score;
