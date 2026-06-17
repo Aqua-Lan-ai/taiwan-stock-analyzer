@@ -116,6 +116,7 @@ export default function DividendCalendar({ stocks }: Props) {
               {year} 年預估收入 <span style={{ color: '#10b981', fontWeight: 600 }}>${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </p>
           )}
+          <p style={{ fontSize: 11, color: '#aeaeb2', marginTop: 2 }}>以下資料為除息月份</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
