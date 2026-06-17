@@ -175,9 +175,13 @@ function parsePerformanceRows(html: string): {
   grossMargin: YearData[]; operatingMargin: YearData[]; bps: YearData[];
 } {
   const rows = extractRows(html);
-  // Find BPS column from header row containing "淨值"
-  const headerRow = rows.find((r) => r.some((c) => c.includes('淨值')));
-  const bpsCol = headerRow ? headerRow.findIndex((c) => c.includes('淨值')) : -1;
+  // Find BPS column: must include "每股淨值" OR "淨值" without "(億)"
+  const headerRow = rows.find((r) => r.some((c) => c.includes('每股淨值') || (c.includes('淨值') && !c.includes('億'))));
+  const bpsCol = headerRow
+    ? (headerRow.findIndex((c) => c.includes('每股淨值')) >= 0
+        ? headerRow.findIndex((c) => c.includes('每股淨值'))
+        : headerRow.findIndex((c) => c.includes('淨值') && !c.includes('億')))
+    : -1;
   const annualRows = rows.filter((r) => /^\d{4}$/.test(r[0]) && r.length >= 19 && parseInt(r[0]) > 1990 && parseInt(r[0]) < 2100);
   const byYear = <T extends (r: string[]) => number | null>(fn: T): YearData[] =>
     annualRows.map((r) => ({ year: parseInt(r[0]), value: fn(r) }));
