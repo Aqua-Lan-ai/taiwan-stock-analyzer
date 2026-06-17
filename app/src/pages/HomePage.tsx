@@ -87,7 +87,6 @@ export default function HomePage() {
             <h1 style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.01em', margin: 0 }}>
               台股存股分析
             </h1>
-            <p style={{ fontSize: 12, color: '#86868b', marginTop: 2, marginBottom: 0 }}>包租公選股五項指標</p>
           </div>
           <span style={{ fontSize: 12, color: '#aeaeb2' }}>v1.0</span>
         </div>
