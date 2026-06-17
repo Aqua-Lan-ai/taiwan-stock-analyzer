@@ -63,11 +63,7 @@ export default function StockDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    const needsLoad =
-      !stock ||
-      (!stock.financials && !stock.etfFinancials) ||
-      (stock.financials && !stock.financials.dividendPayments?.length) ||
-      (stock.etfFinancials && !stock.etfFinancials.dividendPayments?.length);
+    const needsLoad = !stock || (!stock.financials && !stock.etfFinancials);
     if (needsLoad) fetchStockData(id);
   }, [id]);
 
@@ -111,7 +107,7 @@ export default function StockDetailPage() {
             )}
           </div>
           <button
-            onClick={() => fetchStockData(stock.id)}
+            onClick={() => fetchStockData(stock.id, true)}
             disabled={loading}
             style={{ fontSize: 13, color: loading ? '#aeaeb2' : '#0071e3', background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 500 }}
           >
