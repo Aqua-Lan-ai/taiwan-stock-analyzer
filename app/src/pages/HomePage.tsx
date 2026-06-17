@@ -5,7 +5,25 @@ import { useStockData } from '../hooks/useStockData';
 import ScoreBadge from '../components/ScoreBadge';
 import DividendCalendar from '../components/DividendCalendar';
 import { evaluateETFIndicators, calcETFScore } from '../utils/parser';
-import type { Stock } from '../types';
+import type { Stock, YearData } from '../types';
+
+function avg3(arr: YearData[]): number | null {
+  const recent = [...arr].filter((d) => d.value !== null).sort((a, b) => b.year - a.year).slice(0, 3);
+  if (recent.length === 0) return null;
+  return recent.reduce((s, d) => s + (d.value ?? 0), 0) / recent.length;
+}
+
+function liveFairPrice(s: Stock): number | null {
+  if (s.type === 'etf' && s.etfFinancials) {
+    const avg = avg3(s.etfFinancials.cashDividend);
+    return avg ? Math.round(avg / 0.04) : null;
+  }
+  if (s.financials) {
+    const avgEps = avg3(s.financials.eps.filter((d) => (d.value ?? 0) > 0));
+    return avgEps ? Math.round(avgEps * 20) : null;
+  }
+  return null;
+}
 
 const YIELD = 4;
 
@@ -219,8 +237,15 @@ export default function HomePage() {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: '#aeaeb2', marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: '#aeaeb2', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
                         {stock.price ? `現價 $${stock.price}` : '尚未載入'}
+                        {(() => {
+                          const fair = liveFairPrice(stock);
+                          if (!fair) return null;
+                          const ratio = stock.price ? stock.price / fair : null;
+                          const color = ratio === null ? '#aeaeb2' : ratio <= 1 ? '#10b981' : ratio <= 1.2 ? '#ff9500' : '#ff3b30';
+                          return <span style={{ color }}>合理 ${fair}</span>;
+                        })()}
                       </div>
                     </div>
                   </div>
