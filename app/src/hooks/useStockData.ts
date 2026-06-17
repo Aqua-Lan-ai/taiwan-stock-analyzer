@@ -64,6 +64,7 @@ function parseScheduleData(html: string): { months: Map<number, number>; days: M
 // Supplement dividend payments with schedule-page data for years missing from policy sub-rows.
 // Stocks that have some historical sub-rows (e.g. 2024/2025) but not the current year will
 // get the current year's ex-date month added from StockDividendSchedule.asp.
+// If the schedule page is missing a year, the 除息交易日 on the basic page fills the gap.
 function supplementFromSchedule(
   payments: DividendPayment[],
   cashDividend: YearData[],
@@ -72,20 +73,26 @@ function supplementFromSchedule(
 ): DividendPayment[] {
   const coveredYears = new Set(payments.map((p) => p.year));
 
-  if (scheduleMths.size > 0) {
+  // Merge schedule months with basicHtml ex-date as fallback for years schedule doesn't cover
+  const allMonths = new Map(scheduleMths);
+  const exDate = parseExDividendDate(basicHtml);
+  if (exDate && !allMonths.has(exDate.year)) {
+    allMonths.set(exDate.year, exDate.month);
+  }
+
+  if (allMonths.size > 0) {
     const supplemented: DividendPayment[] = [...payments];
     for (const d of cashDividend) {
       if (d.value === null || d.value <= 0) continue;
       if (coveredYears.has(d.year)) continue; // already has sub-row data for this year
-      const month = scheduleMths.get(d.year);
+      const month = allMonths.get(d.year);
       if (month) supplemented.push({ year: d.year, month, amount: d.value });
     }
     if (supplemented.length > 0) return supplemented;
   }
 
-  // If we still have no data at all, fall back to applying the 除息交易日 month globally
+  // Annual-only stocks (no historical sub-rows at all): apply basicHtml ex-date month to all years
   if (payments.length > 0) return payments;
-  const exDate = parseExDividendDate(basicHtml);
   if (!exDate) return payments;
   return cashDividend
     .filter((d) => d.value !== null && d.value > 0)
