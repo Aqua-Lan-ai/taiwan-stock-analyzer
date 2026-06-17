@@ -30,25 +30,46 @@ export function parseStockPrice(html: string): number | null {
 }
 
 export function parseLatestBPS(html: string): number | null {
-  // Walk every <tr> and find one containing 每股淨值, then extract all numeric values from it
-  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let trm: RegExpExecArray | null;
-  while ((trm = trRe.exec(html)) !== null) {
-    const row = trm[1];
-    if (!row.includes('每股淨值')) continue;
-    // Extract text from all tds in this row
-    const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-    let tdm: RegExpExecArray | null;
-    let passedLabel = false;
-    while ((tdm = tdRe.exec(row)) !== null) {
-      const text = tdm[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
-      if (text.includes('每股淨值')) { passedLabel = true; continue; }
-      if (!passedLabel) continue;
-      const n = parseFloat(text.replace(/,/g, ''));
-      if (!isNaN(n) && n >= 1 && n < 5000) return n;
-    }
+  // StockDetail.asp has divFinanceAssets table (歷年資產負債狀況)
+  // Header: 年/季 | 占總資產(%) ×5 | BPS(元) [title='每股淨值(元)']
+  // Data rows: col0=year, col1-5=asset%, col6=BPS
+  const section = html.match(/divFinanceAssets[\s\S]*?<\/table>/)?.[0] ?? '';
+  const src = section || html;
+
+  // Walk header ths to find BPS column (accounting for colspan)
+  let bpsCol = 6; // default based on observed structure
+  const thRe = /<th([^>]*)>[\s\S]*?<\/th>/gi;
+  let tm: RegExpExecArray | null;
+  let colCount = 0;
+  while ((tm = thRe.exec(src)) !== null) {
+    const attrs = tm[1];
+    if (attrs.includes('每股淨值')) { bpsCol = colCount; break; }
+    const span = parseInt(attrs.match(/colspan=['"]?(\d+)/i)?.[1] ?? '1');
+    colCount += span;
   }
-  return null;
+
+  // Parse annual rows
+  const results: { year: number; bps: number }[] = [];
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let rm: RegExpExecArray | null;
+  while ((rm = rowRe.exec(src)) !== null) {
+    const cellRe = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+    const cells: string[] = [];
+    let cm: RegExpExecArray | null;
+    while ((cm = cellRe.exec(rm[1])) !== null) {
+      cells.push(cm[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
+    }
+    if (cells.length <= bpsCol) continue;
+    if (!/^\d{4}$/.test(cells[0])) continue;
+    const year = parseInt(cells[0]);
+    if (year < 2000 || year > 2100) continue;
+    const n = parseFloat((cells[bpsCol] ?? '').replace(/,/g, ''));
+    if (!isNaN(n) && n >= 1 && n < 5000) results.push({ year, bps: n });
+  }
+
+  if (results.length === 0) return null;
+  results.sort((a, b) => b.year - a.year);
+  return results[0].bps;
 }
 
 export function parseDividendData(html: string): {
