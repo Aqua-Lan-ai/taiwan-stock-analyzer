@@ -39,10 +39,10 @@ function getBestYear(stocks: Stock[], allYears: number[]): number {
   return allYears[0];
 }
 
-function InfoIcon() {
+function InfoIcon({ tooltip }: { tooltip: string }) {
   return (
     <span
-      title="goodinfo 未提供除息月份資料，僅顯示年度合計"
+      title={tooltip}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#e5e5ea', color: '#86868b', fontSize: 9, fontWeight: 700, cursor: 'help', flexShrink: 0, marginLeft: 4 }}
     >
       i
@@ -190,15 +190,21 @@ export default function DividendCalendar({ stocks }: Props) {
                             ? (rowMonthlyTotal > 0 ? `$${rowMonthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—')
                             : `${monthly.reduce<number>((s, v) => s + (v ?? 0), 0).toFixed(2)} 元`}
                         </span>
-                      ) : (
-                        // Annual-only payer
+                      ) : annualValue !== null && annualValue > 0 ? (
+                        // Annual-only payer — amount known but ex-date not confirmed monthly
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                          <InfoIcon />
+                          <InfoIcon tooltip="除息日尚未公佈，僅顯示年度合計" />
                           <span style={{ color: '#10b981', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                             {stock.shares > 0
-                              ? `$${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                              : `${(annualValue ?? 0).toFixed(2)} 元`}
+                              ? `$${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (預估)`
+                              : `${annualValue.toFixed(2)} 元 (預估)`}
                           </span>
+                        </div>
+                      ) : (
+                        // No data for this year
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                          <InfoIcon tooltip="尚未公佈除息日與股利資訊" />
+                          <span style={{ color: '#aeaeb2', fontWeight: 500 }}>尚未公告</span>
                         </div>
                       )}
                     </td>
