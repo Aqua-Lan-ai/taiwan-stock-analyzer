@@ -237,12 +237,12 @@ export default function HomePage() {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: '#aeaeb2', marginTop: 2 }}>
-                        {stock.price ? `現價 $${stock.price}` : '尚未載入'}
+                      <div style={{ fontSize: 12, color: '#aeaeb2', marginTop: 2, display: 'flex', alignItems: 'center', gap: 0 }}>
+                        <span>{stock.price ? `現價 $${stock.price}` : '尚未載入'}</span>
                         {(() => {
                           const fair = liveFairPrice(stock);
                           if (!fair) return null;
-                          return ` | 合理價 $${fair}`;
+                          return <><span style={{ margin: '0 8px' }}>|</span><span>合理價 ${fair}</span></>;
                         })()}
                       </div>
                     </div>
