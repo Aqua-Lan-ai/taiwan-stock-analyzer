@@ -29,6 +29,16 @@ export function parseStockPrice(html: string): number | null {
   return null;
 }
 
+export function parseLatestBPS(html: string): number | null {
+  // StockDetail.asp: find 每股淨值 label then next numeric td
+  const m = html.match(/每股淨值[\s\S]{0,400}?<td[^>]*>([\d,]+(?:\.\d+)?)<\/td>/);
+  if (m) {
+    const n = parseFloat(m[1].replace(/,/g, ''));
+    if (!isNaN(n) && n > 0 && n < 10000) return n;
+  }
+  return null;
+}
+
 export function parseDividendData(html: string): {
   cashDividend: YearData[];
   payoutRatio: YearData[];

@@ -4,7 +4,7 @@ import {
   parseStockName, parseStockPrice, parseSubType,
   evaluateIndicators, calcScore,
   parseETFBasic, evaluateETFIndicators, calcETFScore,
-  parseExDividendDate,
+  parseExDividendDate, parseLatestBPS,
 } from '../utils/parser';
 import { useStore } from '../store/useStore';
 
@@ -172,16 +172,9 @@ function findRowByLabel(rows: string[][], label: string): string[] | null {
 function parsePerformanceRows(html: string): {
   netProfit: YearData[]; eps: YearData[]; revenue: YearData[];
   operatingProfit: YearData[]; roe: YearData[]; roa: YearData[];
-  grossMargin: YearData[]; operatingMargin: YearData[]; bps: YearData[];
+  grossMargin: YearData[]; operatingMargin: YearData[];
 } {
   const rows = extractRows(html);
-  // Find BPS column: must include "每股淨值" OR "淨值" without "(億)"
-  const headerRow = rows.find((r) => r.some((c) => c.includes('每股淨值') || (c.includes('淨值') && !c.includes('億'))));
-  const bpsCol = headerRow
-    ? (headerRow.findIndex((c) => c.includes('每股淨值')) >= 0
-        ? headerRow.findIndex((c) => c.includes('每股淨值'))
-        : headerRow.findIndex((c) => c.includes('淨值') && !c.includes('億')))
-    : -1;
   const annualRows = rows.filter((r) => /^\d{4}$/.test(r[0]) && r.length >= 19 && parseInt(r[0]) > 1990 && parseInt(r[0]) < 2100);
   const byYear = <T extends (r: string[]) => number | null>(fn: T): YearData[] =>
     annualRows.map((r) => ({ year: parseInt(r[0]), value: fn(r) }));
@@ -194,7 +187,6 @@ function parsePerformanceRows(html: string): {
     roe:             byYear((r) => parseNum(r[16])),
     roa:             byYear((r) => parseNum(r[17])),
     eps:             byYear((r) => parseNum(r[18])),
-    bps:             bpsCol >= 0 ? byYear((r) => parseNum(r[bpsCol] ?? '')) : [],
   };
 }
 
@@ -331,6 +323,7 @@ export function useStockData() {
         const name = parseStockName(basicHtml);
         const price = parseStockPrice(basicHtml);
         const subType = parseSubType(basicHtml);
+        const latestBpsValue = parseLatestBPS(basicHtml);
         const perf = parsePerformanceRows(perfHtml);
         const { cfo, capex } = parseCashFlowRows(cfHtml);
         const { cashDividend, dividendDays: policyDays, dividendPayments: rawPayments } = parseDividendRows(divHtml);
@@ -359,7 +352,9 @@ export function useStockData() {
           roa: perf.roa,
           grossMargin: perf.grossMargin,
           operatingMargin: perf.operatingMargin,
-          bps: perf.bps,
+          bps: latestBpsValue != null
+            ? [{ year: new Date().getFullYear(), value: latestBpsValue }]
+            : [],
           cfo,
           capex,
           freeCashFlow,
