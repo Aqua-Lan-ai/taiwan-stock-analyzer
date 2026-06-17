@@ -64,8 +64,9 @@ export default function HomePage() {
   }
 
   async function handleReloadAll() {
-    for (const s of stocks) {
-      await fetchStockData(s.id, true);
+    for (let i = 0; i < stocks.length; i++) {
+      await fetchStockData(stocks[i].id, true);
+      if (i < stocks.length - 1) await new Promise(r => setTimeout(r, 2500));
     }
   }
 
