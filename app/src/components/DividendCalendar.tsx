@@ -70,7 +70,13 @@ export default function DividendCalendar({ stocks }: Props) {
 
       return { stock: s, monthly, hasMonthly, annualValue };
     })
-    .filter((r) => r.hasMonthly || (r.annualValue !== null && r.annualValue > 0));
+    .filter((r) => {
+      if (r.hasMonthly || (r.annualValue !== null && r.annualValue > 0)) return true;
+      // Always show stocks that have any dividend history, even if not for this year
+      const allPayments = r.stock.financials?.dividendPayments ?? r.stock.etfFinancials?.dividendPayments ?? [];
+      const allAnnual = r.stock.financials?.cashDividend ?? r.stock.etfFinancials?.cashDividend ?? [];
+      return allPayments.length > 0 || allAnnual.some((d) => (d.value ?? 0) > 0);
+    });
 
   const hasShares = selected.some((s) => s.shares > 0);
 
