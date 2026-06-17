@@ -62,24 +62,19 @@ export default function DividendCalendar({ stocks }: Props) {
   const allRows = selected
     .map((s) => {
       const payments = s.financials?.dividendPayments ?? s.etfFinancials?.dividendPayments ?? [];
-      // Per-stock fallback: if no payments for the globally selected year,
-      // show this stock's most recent year that has payment data
-      const stockYears = [...new Set(payments.map((p) => p.year))].sort((a, b) => b - a);
-      const targetYear = payments.some((p) => p.year === year) ? year : (stockYears[0] ?? year);
-
       const monthly = Array.from({ length: 12 }, (_, i) => {
         const month = i + 1;
         const total = payments
-          .filter((p) => p.year === targetYear && p.month === month)
+          .filter((p) => p.year === year && p.month === month)
           .reduce((sum, p) => sum + p.amount, 0);
         return total > 0 ? total : null;
       });
       const hasMonthly = monthly.some((v) => v !== null);
 
       const annualData = s.financials?.cashDividend ?? s.etfFinancials?.cashDividend ?? [];
-      const annualValue = annualData.find((d) => d.year === targetYear)?.value ?? null;
+      const annualValue = annualData.find((d) => d.year === year)?.value ?? null;
 
-      return { stock: s, monthly, hasMonthly, annualValue, targetYear };
+      return { stock: s, monthly, hasMonthly, annualValue };
     })
     .filter((r) => {
       if (r.hasMonthly || (r.annualValue !== null && r.annualValue > 0)) return true;

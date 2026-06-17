@@ -227,7 +227,8 @@ function parseDividendRows(html: string): {
       if (days !== null && entry.days === null) entry.days = days;
     } else if (currentYear !== null) {
       // Sub-distribution row: r[0] = "∟MM/DD" (ex-date without year)
-      // Skip rows with "未定" (TBD) — not yet announced
+      // Require the ∟ prefix so rows from other tables aren't misread
+      if (!r[0].includes('∟')) continue;
       if (r[0].includes('未定')) continue;
       const monthMatch = r[0].match(/(\d{1,2})\/\d{1,2}/);
       if (monthMatch) {
