@@ -172,7 +172,7 @@ function findRowByLabel(rows: string[][], label: string): string[] | null {
 function parsePerformanceRows(html: string): {
   netProfit: YearData[]; eps: YearData[]; revenue: YearData[];
   operatingProfit: YearData[]; roe: YearData[]; roa: YearData[];
-  grossMargin: YearData[]; operatingMargin: YearData[];
+  grossMargin: YearData[]; operatingMargin: YearData[]; bps: YearData[];
 } {
   const rows = extractRows(html);
   const annualRows = rows.filter((r) => /^\d{4}$/.test(r[0]) && r.length >= 19 && parseInt(r[0]) > 1990 && parseInt(r[0]) < 2100);
@@ -187,6 +187,7 @@ function parsePerformanceRows(html: string): {
     roe:             byYear((r) => parseNum(r[16])),
     roa:             byYear((r) => parseNum(r[17])),
     eps:             byYear((r) => parseNum(r[18])),
+    bps:             byYear((r) => parseNum(r[19] ?? '')),
   };
 }
 
@@ -351,6 +352,7 @@ export function useStockData() {
           roa: perf.roa,
           grossMargin: perf.grossMargin,
           operatingMargin: perf.operatingMargin,
+          bps: perf.bps,
           cfo,
           capex,
           freeCashFlow,

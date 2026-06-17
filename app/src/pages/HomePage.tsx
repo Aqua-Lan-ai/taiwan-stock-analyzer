@@ -23,6 +23,11 @@ function liveSecondary(s: Stock): string | null {
     return `${pct >= 0 ? '溢價' : '折價'} ${sign}${pct.toFixed(2)}%`;
   }
   if (s.financials) {
+    if (s.subType === 'financial') {
+      const latestBps = [...s.financials.bps].filter((d) => (d.value ?? 0) > 0).sort((a, b) => b.year - a.year)[0]?.value ?? null;
+      const fair = latestBps ? Math.round(latestBps) : null;
+      return fair ? `合理價 $${fair}` : null;
+    }
     const avgEps = avg3(s.financials.eps.filter((d) => (d.value ?? 0) > 0));
     const fair = avgEps ? Math.round(avgEps * 20) : null;
     return fair ? `合理價 $${fair}` : null;

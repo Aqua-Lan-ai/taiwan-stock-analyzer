@@ -1,17 +1,30 @@
 import { calcValuation } from '../utils/parser';
-import type { YearData } from '../types';
+import type { YearData, StockSubType } from '../types';
 
 interface Props {
   cashDividend: YearData[];
   eps: YearData[];
+  bps: YearData[];
   price: number | null;
+  subType: StockSubType;
 }
 
 const YIELD = 4; // fixed 4%
 
-export default function ValuationCard({ cashDividend, eps, price }: Props) {
+export default function ValuationCard({ cashDividend, eps, bps, price, subType }: Props) {
+  const isFinancial = subType === 'financial';
   const { cheapPrice, fairPrice, expensivePrice, buyPrice } =
     calcValuation(cashDividend, eps, YIELD, YIELD);
+
+  const recentBps = [...bps]
+    .filter((d) => d.value !== null && (d.value ?? 0) > 0)
+    .sort((a, b) => b.year - a.year)
+    .slice(0, 1);
+  const latestBps = recentBps[0]?.value ?? null;
+  const pbCheap     = latestBps ? Math.round(latestBps * 0.8) : null;
+  const pbFair      = latestBps ? Math.round(latestBps * 1.0) : null;
+  const pbExpensive = latestBps ? Math.round(latestBps * 1.5) : null;
+  const currentPB   = price && latestBps ? price / latestBps : null;
 
   const recentDiv = [...cashDividend]
     .filter((d) => d.value !== null)
@@ -89,22 +102,43 @@ export default function ValuationCard({ cashDividend, eps, price }: Props) {
           </div>
         </div>
 
-        {/* 現價本益比 */}
+        {/* 現價本益比 / 現價淨值比 */}
         <div style={cardStyle}>
-          <div>
-            <p style={{ fontSize: 11, color: '#86868b', marginBottom: 6 }}>現價本益比</p>
-            <p style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: peZone ? peZoneColor[peZone] : '#1d1d1f' }}>
-              {currentPE !== null ? `${currentPE.toFixed(1)}x` : '--'}
-            </p>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#86868b' }}>
-              <span>P/E 15 / 20 / 30</span>
-              {peZone && <span style={{ color: peZoneColor[peZone], fontWeight: 500 }}>{peZoneLabel[peZone]}</span>}
-            </div>
-            {currentPE !== null && <PEBar pe={currentPE} />}
-            {avgEps !== null && <p style={{ fontSize: 10, color: '#aeaeb2' }}>近三年均 EPS {avgEps.toFixed(2)} 元</p>}
-          </div>
+          {isFinancial ? (
+            <>
+              <div>
+                <p style={{ fontSize: 11, color: '#86868b', marginBottom: 6 }}>現價淨值比 (PB)</p>
+                <p style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: currentPB === null ? '#1d1d1f' : currentPB <= 1 ? '#10b981' : currentPB <= 1.5 ? '#0071e3' : '#ff3b30' }}>
+                  {currentPB !== null ? `${currentPB.toFixed(2)}x` : '--'}
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#86868b' }}>
+                  <span>P/B 0.8 / 1.0 / 1.5</span>
+                  {currentPB !== null && <span style={{ color: currentPB <= 1 ? '#10b981' : currentPB <= 1.5 ? '#0071e3' : '#ff3b30', fontWeight: 500 }}>{currentPB <= 0.8 ? '便宜' : currentPB <= 1 ? '合理' : currentPB <= 1.5 ? '偏貴' : '昂貴'}</span>}
+                </div>
+                {currentPB !== null && <PBBar pb={currentPB} />}
+                {latestBps !== null && <p style={{ fontSize: 10, color: '#aeaeb2' }}>最新每股淨值 {latestBps.toFixed(2)} 元</p>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p style={{ fontSize: 11, color: '#86868b', marginBottom: 6 }}>現價本益比</p>
+                <p style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: peZone ? peZoneColor[peZone] : '#1d1d1f' }}>
+                  {currentPE !== null ? `${currentPE.toFixed(1)}x` : '--'}
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#86868b' }}>
+                  <span>P/E 15 / 20 / 30</span>
+                  {peZone && <span style={{ color: peZoneColor[peZone], fontWeight: 500 }}>{peZoneLabel[peZone]}</span>}
+                </div>
+                {currentPE !== null && <PEBar pe={currentPE} />}
+                {avgEps !== null && <p style={{ fontSize: 10, color: '#aeaeb2' }}>近三年均 EPS {avgEps.toFixed(2)} 元</p>}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -112,12 +146,17 @@ export default function ValuationCard({ cashDividend, eps, price }: Props) {
       <div style={{ background: '#fff', borderRadius: 16, padding: '14px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1.5px solid rgba(0,0,0,0.08)', minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <p style={{ fontSize: 11, fontWeight: 600, color: '#86868b', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>估價參考</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, flex: 1 }}>
-          {[
+          {(isFinancial ? [
+            { label: '便宜價', value: pbCheap,     sub: 'P/B 0.8', color: '#10b981' },
+            { label: '合理價', value: pbFair,      sub: 'P/B 1.0', color: '#0071e3' },
+            { label: '昂貴價', value: pbExpensive, sub: 'P/B 1.5', color: '#ff9500' },
+            { label: '殖利率價', value: buyPrice,  sub: `殖利率 ${YIELD}%`, color: '#8b5cf6' },
+          ] : [
             { label: '便宜價', value: cheapPrice,     sub: 'P/E 15',      color: '#10b981' },
             { label: '合理價', value: fairPrice,      sub: 'P/E 20',      color: '#0071e3' },
             { label: '昂貴價', value: expensivePrice, sub: 'P/E 30',      color: '#ff9500' },
             { label: '殖利率價', value: buyPrice,     sub: `殖利率 ${YIELD}%`, color: '#8b5cf6' },
-          ].map(({ label, value, sub, color }, i) => {
+          ]).map(({ label, value, sub, color }, i) => {
             const isCurrent = price && value ? Math.abs(price - value) / value < 0.05 : false;
             return (
               <div key={label} style={{ textAlign: 'center', padding: '4px 4px', borderLeft: i > 0 ? '1px solid #f2f2f7' : 'none', background: isCurrent ? `${color}12` : 'transparent', borderRadius: 8 }}>
@@ -131,10 +170,9 @@ export default function ValuationCard({ cashDividend, eps, price }: Props) {
           })}
         </div>
 
-        {cheapPrice && fairPrice && expensivePrice && buyPrice && price && (
-          <div style={{ marginTop: 12 }}>
-            <PriceBar price={price} cheap={cheapPrice} fair={fairPrice} expensive={expensivePrice} buy={buyPrice} />
-          </div>
+        {price && buyPrice && (isFinancial
+          ? (pbCheap && pbFair && pbExpensive && <div style={{ marginTop: 12 }}><PriceBar price={price} cheap={pbCheap} fair={pbFair} expensive={pbExpensive} buy={buyPrice} /></div>)
+          : (cheapPrice && fairPrice && expensivePrice && <div style={{ marginTop: 12 }}><PriceBar price={price} cheap={cheapPrice} fair={fairPrice} expensive={expensivePrice} buy={buyPrice} /></div>)
         )}
       </div>
     </div>
@@ -150,6 +188,26 @@ function PEBar({ pe }: { pe: number }) {
     { to: max, color: '#fee2e2' },
   ];
   const markerPct = `${Math.min(100, (pe / max) * 100).toFixed(1)}%`;
+  return (
+    <div style={{ position: 'relative', height: 4, borderRadius: 2, overflow: 'visible', display: 'flex' }}>
+      {zones.map((z, i) => {
+        const from = i === 0 ? 0 : zones[i - 1].to;
+        return <div key={i} style={{ background: z.color, width: `${((z.to - from) / max) * 100}%`, height: 4 }} />;
+      })}
+      <div style={{ position: 'absolute', left: markerPct, top: -4, width: 2, height: 12, background: '#1d1d1f', borderRadius: 1, transform: 'translateX(-50%)' }} />
+    </div>
+  );
+}
+
+function PBBar({ pb }: { pb: number }) {
+  const max = 2.5;
+  const zones = [
+    { to: 0.8, color: '#dcfce7' },
+    { to: 1.0, color: '#dbeafe' },
+    { to: 1.5, color: '#fef9c3' },
+    { to: max, color: '#fee2e2' },
+  ];
+  const markerPct = `${Math.min(100, (pb / max) * 100).toFixed(1)}%`;
   return (
     <div style={{ position: 'relative', height: 4, borderRadius: 2, overflow: 'visible', display: 'flex' }}>
       {zones.map((z, i) => {

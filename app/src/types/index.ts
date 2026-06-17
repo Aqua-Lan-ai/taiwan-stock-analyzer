@@ -58,6 +58,9 @@ export interface Financials {
   grossMargin: YearData[];
   operatingMargin: YearData[];
 
+  // Per-share book value (for financial stock PB valuation)
+  bps: YearData[];
+
   // Cash flow
   cfo: YearData[];
   capex: YearData[];
