@@ -121,6 +121,27 @@ const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 app.get('/api/proxy', async (req, res) => {
   const { stockId, type, force } = req.query;
+
+  // TWSE ex-dividend table: year-based query, no goodinfo REINIT needed
+  if (type === 'twse_ex') {
+    const { year } = req.query;
+    if (!year) return res.status(400).json({ error: 'year required' });
+    const cacheKey = `twse_ex/${year}`;
+    const cached = htmlCache.get(cacheKey);
+    if (cached && force !== '1' && Date.now() - cached.time < CACHE_TTL_MS) {
+      return res.json({ html: cached.html, cached: true });
+    }
+    try {
+      const url = `https://www.twse.com.tw/rwd/zh/stock/TWT49U?response=json&strDate=${year}0101&endDate=${year}1231`;
+      const result = await httpsGet(url, { Referer: 'https://www.twse.com.tw/', Accept: 'application/json' });
+      htmlCache.set(cacheKey, { html: result.body, time: Date.now() });
+      console.log(`[proxy] twse_ex/${year} → ${result.body.length} chars`);
+      return res.json({ html: result.body });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   if (!stockId) return res.status(400).json({ error: 'stockId required' });
 
   const paths = {

@@ -167,6 +167,18 @@ export function calcValuation(
   return { buyPrice, sellPrice, cheapPrice, fairPrice, expensivePrice };
 }
 
+// Extract the most recently announced 除息交易日 from goodinfo StockDetail.asp
+// Returns { year, month } or null if not found
+export function parseExDividendDate(html: string): { year: number; month: number } | null {
+  const match = html.match(/除息交易日[\s\S]{0,200}?(\d{4}\/\d{2}\/\d{2})/);
+  if (!match) return null;
+  const parts = match[1].split('/');
+  const year = parseInt(parts[0]);
+  const month = parseInt(parts[1]);
+  if (month < 1 || month > 12 || year < 1990 || year > 2100) return null;
+  return { year, month };
+}
+
 // Parse ETF NAV and premium from goodinfo StockDetail.asp
 // Structure: <th colspan='3'>淨值&nbsp;(折溢價%)</th>
 //            <td colspan='3'>32.83&nbsp;<font color='...'>(±X.XX%)</font></td>

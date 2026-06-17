@@ -4,6 +4,7 @@ import {
   parseStockName, parseStockPrice, parseSubType,
   evaluateIndicators, calcScore,
   parseETFBasic, evaluateETFIndicators, calcETFScore,
+  parseExDividendDate,
 } from '../utils/parser';
 import { useStore } from '../store/useStore';
 
@@ -15,6 +16,72 @@ async function fetchProxy(stockId: string, type: string, force = false): Promise
   const json = await res.json();
   if (json.error) throw new Error(json.error);
   return json.html ?? '';
+}
+
+async function fetchTWSEYear(year: number, force = false): Promise<string> {
+  const url = `${API}/proxy?type=twse_ex&year=${year}${force ? '&force=1' : ''}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json.html ?? '';
+}
+
+// If goodinfo has no sub-row month data, try to supplement from StockDetail.asp 除息交易日
+function supplementFromBasic(
+  payments: DividendPayment[],
+  cashDividend: YearData[],
+  basicHtml: string,
+): DividendPayment[] {
+  if (payments.length > 0) return payments;
+  const exDate = parseExDividendDate(basicHtml);
+  if (!exDate) return payments;
+  const annual = cashDividend.find((d) => d.year === exDate.year);
+  if (!annual?.value || annual.value <= 0) return payments;
+  return [{ year: exDate.year, month: exDate.month, amount: annual.value }];
+}
+
+async function fetchTWSEFallback(stockId: string, cashDividend: YearData[], force: boolean): Promise<DividendPayment[]> {
+  const years = cashDividend
+    .filter((d) => d.value !== null && d.value > 0)
+    .slice(0, 3)
+    .map((d) => d.year);
+  const payments: DividendPayment[] = [];
+  for (const year of years) {
+    try {
+      const body = await fetchTWSEYear(year, force);
+      payments.push(...parseTWSEExDates(body, stockId));
+    } catch { /* ignore */ }
+  }
+  return payments;
+}
+
+function parseTWSEExDates(body: string, stockId: string): DividendPayment[] {
+  try {
+    const json = JSON.parse(body);
+    if (json.stat !== 'OK' || !Array.isArray(json.data)) return [];
+    const fields: string[] = json.fields ?? [];
+    const dateIdx = fields.findIndex((f) => f.includes('除息') && f.includes('日'));
+    const idIdx = fields.findIndex((f) => f.includes('代號'));
+    const divIdx = fields.findIndex((f) => f.includes('現金') && f.includes('股利'));
+    if (dateIdx === -1 || idIdx === -1 || divIdx === -1) return [];
+    const payments: DividendPayment[] = [];
+    for (const row of json.data as string[][]) {
+      if (row[idIdx]?.trim() !== stockId) continue;
+      const amount = parseFloat((row[divIdx] ?? '').replace(/,/g, ''));
+      if (!amount || amount <= 0) continue;
+      const parts = (row[dateIdx] ?? '').trim().split('/');
+      if (parts.length !== 3) continue;
+      const y = parseInt(parts[0]);
+      const month = parseInt(parts[1]);
+      const year = y < 200 ? y + 1911 : y;
+      if (month >= 1 && month <= 12 && year > 1990 && year < 2100) {
+        payments.push({ year, month, amount });
+      }
+    }
+    return payments;
+  } catch {
+    return [];
+  }
 }
 
 function parseNum(s: string): number | null {
@@ -148,7 +215,9 @@ export function useStockData() {
 
         const name = parseStockName(basicHtml);
         const price = parseStockPrice(basicHtml);
-        const { cashDividend, dividendDays, dividendPayments } = parseDividendRows(divHtml);
+        const { cashDividend, dividendDays, dividendPayments: rawPayments } = parseDividendRows(divHtml);
+        const afterBasic = supplementFromBasic(rawPayments, cashDividend, basicHtml);
+        const dividendPayments = afterBasic.length > 0 ? afterBasic : await fetchTWSEFallback(stockId, cashDividend, force);
         const etfBasic = parseETFBasic(basicHtml);
 
         const etfFinancials: ETFFinancials = {
@@ -193,7 +262,9 @@ export function useStockData() {
         const subType = parseSubType(basicHtml);
         const perf = parsePerformanceRows(perfHtml);
         const { cfo, capex } = parseCashFlowRows(cfHtml);
-        const { cashDividend, dividendDays, dividendPayments } = parseDividendRows(divHtml);
+        const { cashDividend, dividendDays, dividendPayments: rawPayments } = parseDividendRows(divHtml);
+        const afterBasic = supplementFromBasic(rawPayments, cashDividend, basicHtml);
+        const dividendPayments = afterBasic.length > 0 ? afterBasic : await fetchTWSEFallback(stockId, cashDividend, force);
 
         const freeCashFlow: YearData[] = cfo.map((d) => {
           const k = capex.find((c) => c.year === d.year)?.value;
