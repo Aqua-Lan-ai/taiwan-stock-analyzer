@@ -49,7 +49,7 @@ function parsePerformanceRows(html: string): {
   grossMargin: YearData[]; operatingMargin: YearData[];
 } {
   const rows = extractRows(html);
-  const annualRows = rows.filter((r) => /^\d{4}$/.test(r[0]) && r.length >= 19);
+  const annualRows = rows.filter((r) => /^\d{4}$/.test(r[0]) && r.length >= 19 && parseInt(r[0]) > 1990 && parseInt(r[0]) < 2100);
   const byYear = <T extends (r: string[]) => number | null>(fn: T): YearData[] =>
     annualRows.map((r) => ({ year: parseInt(r[0]), value: fn(r) }));
   return {
@@ -90,7 +90,7 @@ function parseDividendRows(html: string): {
   for (const r of rows) {
     if (r.length < 5) continue;
 
-    if (/^\d{4}$/.test(r[0])) {
+    if (/^\d{4}$/.test(r[0]) && parseInt(r[0]) > 1990 && parseInt(r[0]) < 2100) {
       // Year summary row — track parent year for sub-rows below
       currentYear = parseInt(r[0]);
       const amount = parseNum(r[4]) ?? 0;
