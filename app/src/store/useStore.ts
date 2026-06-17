@@ -14,6 +14,7 @@ interface StoreState {
   selectAll: (selected: boolean) => void;
   updateShares: (id: string, shares: number) => void;
   updateETFMeta: (id: string, aum: number | null, expenseRatio: number | null) => void;
+  reorderStocks: (fromId: string, toId: string) => void;
 }
 
 const defaultSettings: GlobalSettings = {
@@ -89,6 +90,17 @@ export const useStore = create<StoreState>()(
               return { ...s, etfAUM: aum, etfExpenseRatio: expenseRatio, score };
             }),
           };
+        }),
+
+      reorderStocks: (fromId, toId) =>
+        set((state) => {
+          const stocks = [...state.stocks];
+          const fromIdx = stocks.findIndex((s) => s.id === fromId);
+          const toIdx = stocks.findIndex((s) => s.id === toId);
+          if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return state;
+          const [item] = stocks.splice(fromIdx, 1);
+          stocks.splice(toIdx, 0, item);
+          return { stocks };
         }),
 
       updateSettings: (settings) =>
