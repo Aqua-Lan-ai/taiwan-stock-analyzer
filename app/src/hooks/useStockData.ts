@@ -41,8 +41,11 @@ function parseScheduleData(html: string): { months: Map<number, number>; days: M
       cells.push(cm[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
     }
     if (cells.length < 3) continue;
-    const year = parseInt(cells[0]);
-    if (isNaN(year) || year < 2000 || year > 2100) continue;
+    let year = parseInt(cells[0]);
+    if (isNaN(year)) continue;
+    // Goodinfo may use ROC year (e.g. 115 for 2026) or AD year (e.g. 2026)
+    if (year >= 1 && year < 200) year += 1911;
+    if (year < 2000 || year > 2100) continue;
     // ex-date: "'25/06/19" — strip leading apostrophe
     const parts = cells[2].replace(/^'/, '').split('/');
     if (parts.length === 3) {
