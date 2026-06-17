@@ -82,27 +82,24 @@ function supplementFromSchedule(
 
   const currentYear = new Date().getFullYear();
 
-  if (allMonths.size > 0) {
+  if (allMonths.size > 0 || exDate) {
     const supplemented: DividendPayment[] = [...payments];
     for (const d of cashDividend) {
       if (d.value === null || d.value <= 0) continue;
-      if (coveredYears.has(d.year)) continue; // already has sub-row data for this year
-      const month = allMonths.get(d.year);
+      if (coveredYears.has(d.year)) continue;
+      let month = allMonths.get(d.year);
+      // Historical years missing from schedule: use exDate.month as approximation
+      if (!month && d.year < currentYear && exDate) month = exDate.month;
       if (!month) continue;
-      // For current year or future: only supplement if basicHtml confirms the ex-date year
-      // (prevents schedule-page predictions from appearing as confirmed monthly data)
+      // For current year or future: only add if basicHtml confirms the ex-date year
       if (d.year >= currentYear && exDate?.year !== d.year) continue;
       supplemented.push({ year: d.year, month, amount: d.value });
     }
     if (supplemented.length > 0) return supplemented;
   }
 
-  // Annual-only stocks (no historical sub-rows at all): apply basicHtml ex-date month to all years
   if (payments.length > 0) return payments;
-  if (!exDate) return payments;
-  return cashDividend
-    .filter((d) => d.value !== null && d.value > 0 && (d.year < currentYear || exDate.year === d.year))
-    .map((d) => ({ year: d.year, month: exDate.month, amount: d.value as number }));
+  return [];
 }
 
 // Merge schedule 填息天數 into dividendDays: schedule data is more reliable for
