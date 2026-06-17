@@ -73,10 +73,10 @@ function supplementFromSchedule(
 ): DividendPayment[] {
   const coveredYears = new Set(payments.map((p) => p.year));
 
-  // Merge schedule months with basicHtml ex-date as fallback for years schedule doesn't cover
+  // Merge schedule months; basicHtml 除息交易日 always wins over schedule-page predictions
   const allMonths = new Map(scheduleMths);
   const exDate = parseExDividendDate(basicHtml);
-  if (exDate && !allMonths.has(exDate.year)) {
+  if (exDate) {
     allMonths.set(exDate.year, exDate.month);
   }
 
