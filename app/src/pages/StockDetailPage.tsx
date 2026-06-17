@@ -63,7 +63,10 @@ export default function StockDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    const needsLoad = !stock || (!stock.financials && !stock.etfFinancials);
+    const needsLoad =
+      !stock ||
+      (!stock.financials && !stock.etfFinancials) ||
+      (stock.etfFinancials && stock.etfFinancials.aum === null);
     if (needsLoad) fetchStockData(id);
   }, [id]);
 

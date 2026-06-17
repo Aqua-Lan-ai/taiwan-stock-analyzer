@@ -182,7 +182,7 @@ export function parseETFBasic(html: string): Pick<ETFFinancials, 'nav' | 'premiu
   }
 
   // AUM from 市值 field (e.g. "市值 7,002.05億")
-  const aumMatch = html.match(/市值[\s\S]{0,50}?([\d,]+(?:\.\d+)?)億/);
+  const aumMatch = html.match(/市值[\s\S]{0,200}?([\d,]+(?:\.\d+)?)億/);
   const aum = aumMatch ? parseFloat(aumMatch[1].replace(/,/g, '')) : null;
 
   // Rough expense ratio estimate based on AUM (for reference only)
