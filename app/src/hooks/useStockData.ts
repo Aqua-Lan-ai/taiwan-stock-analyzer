@@ -305,20 +305,6 @@ export function useStockData() {
     const isETF = /^0\d{3,5}$/.test(stockId);
 
     try {
-      // If financials are fresh (< 6h) and not forced, only refresh price from TWSE
-      const stocks = useStore.getState().stocks;
-      const existing = stocks.find(s => s.id === stockId);
-      const lastUpdated = existing?.lastUpdated ? new Date(existing.lastUpdated).getTime() : 0;
-      const financialsFresh = !force && Date.now() - lastUpdated < FINANCIALS_STALE_MS
-        && (existing?.financials != null || existing?.etfFinancials != null);
-
-      if (financialsFresh) {
-        const { price, name } = await fetchTWSEPrice(stockId);
-        if (price != null) updateStock(stockId, { price, ...(name ? { name } : {}) });
-        setLoading(false);
-        return;
-      }
-
       if (isETF) {
         // ETF: fetch basic + dividend policy + schedule in parallel
         const [basicHtml, divHtml, schedHtml] = await Promise.all([
