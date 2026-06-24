@@ -201,7 +201,7 @@ export default function USHomePage() {
   const [afterTax, setAfterTax] = useState(false);
 
   async function handleAdd() {
-    const id = input.trim().toUpperCase();
+    const id = input.trim().toUpperCase().replace(/\//g, '-');
     if (!id) return;
     addStock(id);
     setInput('');

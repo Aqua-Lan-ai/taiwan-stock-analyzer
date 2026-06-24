@@ -108,8 +108,9 @@ export default async function handler(req, res) {
 
   // Yahoo Finance: price + dividend history for US stocks
   if (type === 'us_stock') {
-    const { ticker } = req.query;
-    if (!ticker) return res.status(400).json({ error: 'ticker required' });
+    const rawTicker = req.query.ticker;
+    if (!rawTicker) return res.status(400).json({ error: 'ticker required' });
+    const ticker = rawTicker.replace(/\//g, '-');  // BRK/B → BRK-B
     const cacheKey = `us_stock/${ticker}`;
     const cached = htmlCache.get(cacheKey);
     const US_TTL = 30 * 60 * 1000; // 30 min
