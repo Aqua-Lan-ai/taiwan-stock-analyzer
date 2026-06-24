@@ -124,7 +124,7 @@ export default async function handler(req, res) {
       };
       // Fetch chart (always needed) and PE summary (best-effort)
       const chartRes = await httpsGet(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=3mo`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=1mo`,
         chartHeaders
       );
       const chart = JSON.parse(chartRes.body);
