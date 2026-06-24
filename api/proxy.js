@@ -117,22 +117,32 @@ export default async function handler(req, res) {
       return res.json({ html: cached.html, cached: true });
     }
     try {
-      const { crumb, cookie } = await getYFCrumb();
-      const baseHeaders = {
+      const chartHeaders = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json',
         'Referer': 'https://finance.yahoo.com/',
-        'Cookie': cookie,
       };
-      const [chartRes, summaryRes] = await Promise.all([
-        httpsGet(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=3mo`, baseHeaders),
-        httpsGet(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail&crumb=${encodeURIComponent(crumb)}`, baseHeaders),
-      ]);
+      // Fetch chart (always needed) and PE summary (best-effort)
+      const chartRes = await httpsGet(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=3mo`,
+        chartHeaders
+      );
       const chart = JSON.parse(chartRes.body);
-      const summary = JSON.parse(summaryRes.body);
+
+      let summaryResult = null;
+      try {
+        const { crumb, cookie } = await getYFCrumb();
+        const summaryRes = await httpsGet(
+          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail&crumb=${encodeURIComponent(crumb)}`,
+          { ...chartHeaders, Cookie: cookie }
+        );
+        const summary = JSON.parse(summaryRes.body);
+        summaryResult = summary?.quoteSummary?.result?.[0] ?? null;
+      } catch (_) { /* PE unavailable, continue without it */ }
+
       const result = {
         chart: chart?.chart?.result?.[0] ?? null,
-        summary: summary?.quoteSummary?.result?.[0] ?? null,
+        summary: summaryResult,
       };
       const html = JSON.stringify(result);
       htmlCache.set(cacheKey, { html, time: Date.now() });
