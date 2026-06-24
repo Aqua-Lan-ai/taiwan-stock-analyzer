@@ -37,11 +37,12 @@ function parseUSStockData(data: { chart: unknown; summary: unknown } | null): {
   const price: number | null = meta.regularMarketPrice ?? null;
   const currency: string = meta.currency ?? 'USD';
 
-  // PE from summaryDetail
-  const pe: number | null =
+  // PE: trailing preferred, forward as fallback
+  const peRaw =
     summary?.summaryDetail?.trailingPE?.raw ??
-    summary?.defaultKeyStatistics?.forwardPE?.raw ??
+    summary?.summaryDetail?.forwardPE?.raw ??
     null;
+  const pe: number | null = peRaw != null ? Math.round(peRaw * 10) / 10 : null;
 
   // Dividend history from chart events
   const rawDivs = chart?.events?.dividends ?? {};

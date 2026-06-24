@@ -60,6 +60,31 @@ async function fetchGoodinfo(path, clientId) {
 let cachedClientId = null;
 let cacheTime = 0;
 
+// Yahoo Finance crumb auth
+let yfCrumb = null;
+let yfCookie = null;
+let yfCrumbTime = 0;
+
+async function getYFCrumb() {
+  if (yfCrumb && yfCookie && Date.now() - yfCrumbTime < 60 * 60 * 1000) return { crumb: yfCrumb, cookie: yfCookie };
+  const fcRes = await httpsGet('https://fc.yahoo.com', { Accept: '*/*' });
+  const setCookie = fcRes.headers['set-cookie'];
+  let cookie = '';
+  if (setCookie) {
+    const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
+    cookie = cookies.map((c) => c.split(';')[0]).join('; ');
+  }
+  const crumbRes = await httpsGet('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+    Accept: 'application/json',
+    Cookie: cookie,
+    Referer: 'https://finance.yahoo.com/',
+  });
+  yfCrumb = crumbRes.body.trim();
+  yfCookie = cookie;
+  yfCrumbTime = Date.now();
+  return { crumb: yfCrumb, cookie: yfCookie };
+}
+
 async function getClientId() {
   if (cachedClientId && Date.now() - cacheTime < 60 * 60 * 1000) return cachedClientId;
   const res = await httpsGet(`${GOODINFO_BASE}/index.asp`);
@@ -92,14 +117,16 @@ export default async function handler(req, res) {
       return res.json({ html: cached.html, cached: true });
     }
     try {
-      const headers = {
+      const { crumb, cookie } = await getYFCrumb();
+      const baseHeaders = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json',
         'Referer': 'https://finance.yahoo.com/',
+        'Cookie': cookie,
       };
       const [chartRes, summaryRes] = await Promise.all([
-        httpsGet(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=3mo`, headers),
-        httpsGet(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,defaultKeyStatistics`, headers),
+        httpsGet(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=3mo`, baseHeaders),
+        httpsGet(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail&crumb=${encodeURIComponent(crumb)}`, baseHeaders),
       ]);
       const chart = JSON.parse(chartRes.body);
       const summary = JSON.parse(summaryRes.body);
