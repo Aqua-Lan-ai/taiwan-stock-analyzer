@@ -98,6 +98,8 @@ export interface USStock {
   price: number | null;
   pe: number | null;
   currency: string;    // "USD"
+  country: string | null;
+  withholdingRate: number; // %, e.g. 30 for US, 0 for UK
   shares: number;
   selected: boolean;
   dividendPayments: DividendPayment[];

@@ -28,6 +28,8 @@ export const useUSStore = create<USStoreState>()(
             price: null,
             pe: null,
             currency: 'USD',
+            country: null,
+            withholdingRate: 30,
             shares: 0,
             selected: true,
             dividendPayments: [],

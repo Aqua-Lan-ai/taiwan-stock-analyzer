@@ -133,7 +133,7 @@ export default async function handler(req, res) {
       try {
         const { crumb, cookie } = await getYFCrumb();
         const summaryRes = await httpsGet(
-          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail&crumb=${encodeURIComponent(crumb)}`,
+          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,assetProfile&crumb=${encodeURIComponent(crumb)}`,
           { ...chartHeaders, Cookie: cookie }
         );
         const summary = JSON.parse(summaryRes.body);

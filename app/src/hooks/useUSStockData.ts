@@ -2,6 +2,20 @@ import { useState, useCallback } from 'react';
 import type { DividendPayment, YearData } from '../types';
 import { useUSStore } from '../store/useUSStore';
 
+function withholdingRateForCountry(country: string | null): number {
+  if (!country || country === 'United States') return 30;
+  if (['United Kingdom', 'Hong Kong', 'Singapore'].includes(country)) return 0;
+  if (country === 'Netherlands') return 15;
+  if (country === 'Switzerland') return 35;
+  if (country === 'Japan') return 20;
+  if (country === 'Canada') return 25;
+  if (country === 'Germany') return 25;
+  if (country === 'France') return 30;
+  if (country === 'Australia') return 30;
+  if (country === 'Ireland') return 20;
+  return 30;
+}
+
 const API = '/api';
 
 async function fetchYahoo(ticker: string, force = false): Promise<{ chart: unknown; summary: unknown } | null> {
@@ -21,10 +35,12 @@ function parseUSStockData(data: { chart: unknown; summary: unknown } | null): {
   price: number | null;
   pe: number | null;
   currency: string;
+  country: string | null;
+  withholdingRate: number;
   dividendPayments: DividendPayment[];
   cashDividend: YearData[];
 } {
-  const empty = { name: '', price: null, pe: null, currency: 'USD', dividendPayments: [], cashDividend: [] };
+  const empty = { name: '', price: null, pe: null, currency: 'USD', country: null, withholdingRate: 30, dividendPayments: [], cashDividend: [] };
   if (!data) return empty;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,6 +59,10 @@ function parseUSStockData(data: { chart: unknown; summary: unknown } | null): {
     summary?.summaryDetail?.forwardPE?.raw ??
     null;
   const pe: number | null = peRaw != null ? Math.round(peRaw * 10) / 10 : null;
+
+  // Country + withholding rate
+  const country: string | null = summary?.assetProfile?.country ?? null;
+  const withholdingRate = withholdingRateForCountry(country);
 
   // Dividend history from chart events
   const rawDivs = chart?.events?.dividends ?? {};
@@ -70,7 +90,7 @@ function parseUSStockData(data: { chart: unknown; summary: unknown } | null): {
     .sort((a, b) => b[0] - a[0])
     .map(([year, value]) => ({ year, value: Math.round(value * 1000) / 1000 }));
 
-  return { name, price, pe, currency, dividendPayments: payments, cashDividend };
+  return { name, price, pe, currency, country, withholdingRate, dividendPayments: payments, cashDividend };
 }
 
 export function useUSStockData() {
@@ -83,12 +103,14 @@ export function useUSStockData() {
     setError(null);
     try {
       const raw = await fetchYahoo(ticker, force);
-      const { name, price, pe, currency, dividendPayments, cashDividend } = parseUSStockData(raw);
+      const { name, price, pe, currency, country, withholdingRate, dividendPayments, cashDividend } = parseUSStockData(raw);
       updateStock(ticker, {
         name,
         price,
         pe,
         currency,
+        country,
+        withholdingRate,
         dividendPayments,
         cashDividend,
         lastUpdated: new Date().toISOString(),

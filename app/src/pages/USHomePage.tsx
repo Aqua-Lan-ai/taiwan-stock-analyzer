@@ -26,7 +26,7 @@ function getBestYear(stocks: USStock[], allYears: number[]): number {
   return allYears[0];
 }
 
-function USDividendCalendar({ stocks }: { stocks: USStock[] }) {
+function USDividendCalendar({ stocks, afterTax }: { stocks: USStock[]; afterTax: boolean }) {
   const selected = stocks.filter((s) => s.selected);
   const allYears = getAvailableYears(selected);
   const [pinnedYear, setPinnedYear] = useState<number | null>(null);
@@ -37,15 +37,17 @@ function USDividendCalendar({ stocks }: { stocks: USStock[] }) {
 
   const allRows = selected
     .map((s) => {
+      const taxMult = afterTax ? (1 - s.withholdingRate / 100) : 1;
       const monthly = Array.from({ length: 12 }, (_, i) => {
         const month = i + 1;
         const total = s.dividendPayments
           .filter((p: DividendPayment) => p.year === year && p.month === month)
           .reduce((sum, p) => sum + p.amount, 0);
-        return total > 0 ? total : null;
+        return total > 0 ? total * taxMult : null;
       });
       const hasMonthly = monthly.some((v) => v !== null);
-      const annualValue: number | null = s.cashDividend.find((d: YearData) => d.year === year)?.value ?? null;
+      const annualRaw: number | null = s.cashDividend.find((d: YearData) => d.year === year)?.value ?? null;
+      const annualValue = annualRaw != null ? annualRaw * taxMult : null;
       return { stock: s, monthly, hasMonthly, annualValue };
     })
     .filter((r) => r.hasMonthly || (r.annualValue !== null && r.annualValue > 0) ||
@@ -196,6 +198,7 @@ export default function USHomePage() {
   const { fetchStockData, loading, error } = useUSStockData();
   const [input, setInput] = useState('');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [afterTax, setAfterTax] = useState(false);
 
   async function handleAdd() {
     const id = input.trim().toUpperCase();
@@ -345,6 +348,20 @@ export default function USHomePage() {
                   )}
                 </div>
 
+                {/* Withholding rate */}
+                <div style={{ flex: '0 0 52px', textAlign: 'right' }}>
+                  {s.lastUpdated ? (
+                    <>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: s.withholdingRate === 0 ? '#10b981' : s.withholdingRate < 30 ? '#f59e0b' : '#ff3b30', fontVariantNumeric: 'tabular-nums' }}>
+                        {s.withholdingRate}%
+                      </div>
+                      <div style={{ fontSize: 11, color: '#86868b' }}>扣稅</div>
+                    </>
+                  ) : (
+                    <span style={{ color: '#aeaeb2', fontSize: 13 }}>—</span>
+                  )}
+                </div>
+
                 {/* Shares */}
                 <div style={{ flex: '0 0 100px', textAlign: 'right' }}>
                   <input
@@ -382,7 +399,26 @@ export default function USHomePage() {
 
         {/* Dividend Calendar */}
         {stocks.some((s) => s.selected && (s.dividendPayments.length > 0 || s.cashDividend.length > 0)) && (
-          <USDividendCalendar stocks={stocks} />
+          <>
+            {/* Tax toggle */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f2f2f7', borderRadius: 10, padding: 3 }}>
+                <button
+                  onClick={() => setAfterTax(false)}
+                  style={{ fontSize: 12, fontWeight: afterTax ? 500 : 600, color: afterTax ? '#86868b' : '#1d1d1f', background: afterTax ? 'none' : '#fff', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: 8, boxShadow: afterTax ? 'none' : '0 1px 3px rgba(0,0,0,0.1)' }}
+                >
+                  稅前
+                </button>
+                <button
+                  onClick={() => setAfterTax(true)}
+                  style={{ fontSize: 12, fontWeight: afterTax ? 600 : 500, color: afterTax ? '#1d1d1f' : '#86868b', background: afterTax ? '#fff' : 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: 8, boxShadow: afterTax ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
+                >
+                  稅後
+                </button>
+              </div>
+            </div>
+            <USDividendCalendar stocks={stocks} afterTax={afterTax} />
+          </>
         )}
 
         {stocks.length === 0 && (
