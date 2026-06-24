@@ -84,12 +84,52 @@ export default function HomePage() {
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ maxWidth: 896, margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.01em', margin: 0 }}>
-              台股存股分析
-            </h1>
+          <h1 style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.01em', margin: 0 }}>
+            台股存股分析
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => {
+                const data = localStorage.getItem('stock-storage');
+                if (!data) return;
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `taiwan-stocks-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              style={{ fontSize: 13, color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: '4px 8px' }}
+            >
+              匯出
+            </button>
+            <label style={{ fontSize: 13, color: '#0071e3', fontWeight: 500, cursor: 'pointer', padding: '4px 8px' }}>
+              匯入
+              <input
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    try {
+                      const text = ev.target?.result as string;
+                      const parsed = JSON.parse(text);
+                      if (!parsed.state?.stocks) { alert('格式不正確，請選擇正確的匯出檔案'); return; }
+                      localStorage.setItem('stock-storage', text);
+                      window.location.reload();
+                    } catch { alert('檔案解析失敗'); }
+                  };
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <span style={{ fontSize: 12, color: '#aeaeb2' }}>v1.0</span>
           </div>
-          <span style={{ fontSize: 12, color: '#aeaeb2' }}>v1.0</span>
         </div>
       </header>
 
