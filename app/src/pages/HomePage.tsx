@@ -102,13 +102,17 @@ export default function HomePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={() => {
-                const data = localStorage.getItem('stock-storage');
-                if (!data) return;
-                const blob = new Blob([data], { type: 'application/json' });
+                const tw = localStorage.getItem('stock-storage');
+                const us = localStorage.getItem('us-stock-storage');
+                if (!tw && !us) return;
+                const bundle: Record<string, unknown> = {};
+                if (tw) bundle['stock-storage'] = JSON.parse(tw);
+                if (us) bundle['us-stock-storage'] = JSON.parse(us);
+                const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `taiwan-stocks-${new Date().toISOString().slice(0, 10)}.json`;
+                a.download = `stocks-${new Date().toISOString().slice(0, 10)}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
@@ -130,6 +134,14 @@ export default function HomePage() {
                     try {
                       const text = ev.target?.result as string;
                       const parsed = JSON.parse(text);
+                      // New bundled format
+                      if (parsed['stock-storage'] || parsed['us-stock-storage']) {
+                        if (parsed['stock-storage']) localStorage.setItem('stock-storage', JSON.stringify(parsed['stock-storage']));
+                        if (parsed['us-stock-storage']) localStorage.setItem('us-stock-storage', JSON.stringify(parsed['us-stock-storage']));
+                        window.location.reload();
+                        return;
+                      }
+                      // Legacy: plain stock-storage format
                       if (!parsed.state?.stocks) { alert('格式不正確，請選擇正確的匯出檔案'); return; }
                       localStorage.setItem('stock-storage', text);
                       window.location.reload();
