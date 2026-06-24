@@ -81,6 +81,40 @@ export default async function handler(req, res) {
 
   const { stockId, type, force } = req.query;
 
+  // Yahoo Finance: price + dividend history for US stocks
+  if (type === 'us_stock') {
+    const { ticker } = req.query;
+    if (!ticker) return res.status(400).json({ error: 'ticker required' });
+    const cacheKey = `us_stock/${ticker}`;
+    const cached = htmlCache.get(cacheKey);
+    const US_TTL = 30 * 60 * 1000; // 30 min
+    if (cached && force !== '1' && Date.now() - cached.time < US_TTL) {
+      return res.json({ html: cached.html, cached: true });
+    }
+    try {
+      const headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://finance.yahoo.com/',
+      };
+      const [chartRes, summaryRes] = await Promise.all([
+        httpsGet(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=3mo`, headers),
+        httpsGet(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,defaultKeyStatistics`, headers),
+      ]);
+      const chart = JSON.parse(chartRes.body);
+      const summary = JSON.parse(summaryRes.body);
+      const result = {
+        chart: chart?.chart?.result?.[0] ?? null,
+        summary: summary?.quoteSummary?.result?.[0] ?? null,
+      };
+      const html = JSON.stringify(result);
+      htmlCache.set(cacheKey, { html, time: Date.now() });
+      return res.json({ html });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // TWSE real-time price: no goodinfo needed
   if (type === 'twse_price') {
     if (!stockId) return res.status(400).json({ error: 'stockId required' });

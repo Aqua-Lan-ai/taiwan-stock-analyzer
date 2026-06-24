@@ -91,3 +91,16 @@ export interface GlobalSettings {
 
 export type TableType = '獲利能力指標' | '損益表' | '現金流量表' | '股利政策表';
 export type ETFTableType = '配息紀錄';
+
+export interface USStock {
+  id: string;          // ticker, e.g. "MMM"
+  name: string;
+  price: number | null;
+  pe: number | null;
+  currency: string;    // "USD"
+  shares: number;
+  selected: boolean;
+  dividendPayments: DividendPayment[];
+  cashDividend: YearData[];
+  lastUpdated: string | null;
+}

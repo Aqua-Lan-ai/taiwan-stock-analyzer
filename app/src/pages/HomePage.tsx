@@ -84,9 +84,21 @@ export default function HomePage() {
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ maxWidth: 896, margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.01em', margin: 0 }}>
-            台股存股分析
-          </h1>
+          {/* Tab switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f2f2f7', borderRadius: 10, padding: 3 }}>
+            <button
+              onClick={() => navigate('/')}
+              style={{ fontSize: 13, fontWeight: 600, color: '#1d1d1f', background: '#fff', border: 'none', cursor: 'pointer', padding: '5px 14px', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+            >
+              台股
+            </button>
+            <button
+              onClick={() => navigate('/us')}
+              style={{ fontSize: 13, fontWeight: 500, color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', padding: '5px 14px', borderRadius: 8, transition: 'all 0.15s' }}
+            >
+              美股
+            </button>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={() => {
