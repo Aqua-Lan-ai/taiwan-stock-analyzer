@@ -348,20 +348,6 @@ export default function USHomePage() {
                   )}
                 </div>
 
-                {/* Withholding rate */}
-                <div style={{ flex: '0 0 52px', textAlign: 'right' }}>
-                  {s.lastUpdated ? (
-                    <>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: s.withholdingRate === 0 ? '#10b981' : s.withholdingRate < 30 ? '#f59e0b' : '#ff3b30', fontVariantNumeric: 'tabular-nums' }}>
-                        {s.withholdingRate}%
-                      </div>
-                      <div style={{ fontSize: 11, color: '#86868b' }}>扣稅</div>
-                    </>
-                  ) : (
-                    <span style={{ color: '#aeaeb2', fontSize: 13 }}>—</span>
-                  )}
-                </div>
-
                 {/* Shares */}
                 <div style={{ flex: '0 0 100px', textAlign: 'right' }}>
                   <input
