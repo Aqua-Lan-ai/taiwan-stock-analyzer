@@ -386,7 +386,6 @@ export default function USHomePage() {
                         ) : (
                           <span>尚未載入</span>
                         )}
-                        {s.pe !== null && <><span>|</span><span>P/E {s.pe.toFixed(1)}</span></>}
                       </div>
                     </div>
                   </div>
