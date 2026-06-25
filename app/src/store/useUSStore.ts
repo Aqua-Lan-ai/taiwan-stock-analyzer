@@ -27,6 +27,8 @@ export const useUSStore = create<USStoreState>()(
             name: '',
             price: null,
             pe: null,
+            eps: null,
+            bvps: null,
             currency: 'USD',
             country: null,
             withholdingRate: 30,

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUSStore } from '../store/useUSStore';
-import { useUSStockData } from '../hooks/useUSStockData';
+import { useUSStockData, calcGrahamNumber, calcDDM } from '../hooks/useUSStockData';
 import SharedHeader from '../components/SharedHeader';
 import type { USStock, DividendPayment, YearData } from '../types';
 
@@ -386,9 +386,28 @@ export default function USHomePage() {
                         ) : (
                           <span>尚未載入</span>
                         )}
-                        {s.pe !== null && (
-                          <><span>|</span><span>P/E {s.pe.toFixed(1)}</span></>
-                        )}
+                        {s.pe !== null && <><span>|</span><span>P/E {s.pe.toFixed(1)}</span></>}
+                        {(() => {
+                          const graham = calcGrahamNumber(s.eps, s.bvps);
+                          const ddm = calcDDM(s.cashDividend);
+                          if (!graham && !ddm) return null;
+                          return (
+                            <>
+                              <span>|</span>
+                              {graham && (
+                                <span style={{ color: s.price && graham > s.price ? '#10b981' : '#ff3b30' }}>
+                                  Graham ${Math.round(graham)}
+                                </span>
+                              )}
+                              {graham && ddm && <span>·</span>}
+                              {ddm && (
+                                <span style={{ color: s.price && ddm > s.price ? '#10b981' : '#ff3b30' }}>
+                                  DDM ${Math.round(ddm)}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

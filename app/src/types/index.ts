@@ -97,6 +97,8 @@ export interface USStock {
   name: string;
   price: number | null;
   pe: number | null;
+  eps: number | null;
+  bvps: number | null;
   currency: string;    // "USD"
   country: string | null;
   withholdingRate: number; // %, e.g. 30 for US, 0 for UK
