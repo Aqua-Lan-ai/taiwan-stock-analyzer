@@ -118,34 +118,22 @@ export default async function handler(req, res) {
       return res.json({ html: cached.html, cached: true });
     }
     try {
-      const browserHeaders = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://finance.yahoo.com/',
-      };
+      const chartRes = await httpsGet(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=1mo`,
+        {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': 'https://finance.yahoo.com/',
+        }
+      );
 
-      // Fetch chart + quote page in parallel
-      const [chartRes, quoteRes] = await Promise.all([
-        httpsGet(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=1mo`,
-          { ...browserHeaders, Accept: 'application/json' }
-        ),
-        httpsGet(
-          `https://finance.yahoo.com/quote/${ticker}/`,
-          { ...browserHeaders, Accept: 'text/html,application/xhtml+xml' }
-        ).catch(() => ({ body: '' })),
-      ]);
+      if (!chartRes.body.startsWith('{')) {
+        throw new Error(`Yahoo Finance error: ${chartRes.body.slice(0, 80)}`);
+      }
 
       const chart = JSON.parse(chartRes.body);
-
-      // Extract PE from fin-streamer data attributes (no auth needed)
-      const peMatch = quoteRes.body.match(/data-value="([\d.]+)"[^>]*data-field="trailingPE"/);
-      const pe = peMatch ? parseFloat(peMatch[1]) : null;
-
-      const result = {
-        chart: chart?.chart?.result?.[0] ?? null,
-        pe,
-      };
+      const result = { chart: chart?.chart?.result?.[0] ?? null, pe: null };
       const html = JSON.stringify(result);
       htmlCache.set(cacheKey, { html, time: Date.now() });
       return res.json({ html });
