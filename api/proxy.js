@@ -118,32 +118,33 @@ export default async function handler(req, res) {
       return res.json({ html: cached.html, cached: true });
     }
     try {
-      const chartHeaders = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'application/json',
+      const browserHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Referer': 'https://finance.yahoo.com/',
       };
-      // Fetch chart (always needed) and PE summary (best-effort)
-      const chartRes = await httpsGet(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=1mo`,
-        chartHeaders
-      );
+
+      // Fetch chart + quote page in parallel
+      const [chartRes, quoteRes] = await Promise.all([
+        httpsGet(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=1mo`,
+          { ...browserHeaders, Accept: 'application/json' }
+        ),
+        httpsGet(
+          `https://finance.yahoo.com/quote/${ticker}/`,
+          { ...browserHeaders, Accept: 'text/html,application/xhtml+xml' }
+        ).catch(() => ({ body: '' })),
+      ]);
+
       const chart = JSON.parse(chartRes.body);
 
-      let summaryResult = null;
-      try {
-        const { crumb, cookie } = await getYFCrumb();
-        const summaryRes = await httpsGet(
-          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail,assetProfile,defaultKeyStatistics&crumb=${encodeURIComponent(crumb)}`,
-          { ...chartHeaders, Cookie: cookie }
-        );
-        const summary = JSON.parse(summaryRes.body);
-        summaryResult = summary?.quoteSummary?.result?.[0] ?? null;
-      } catch (_) { /* PE unavailable, continue without it */ }
+      // Extract PE from fin-streamer data attributes (no auth needed)
+      const peMatch = quoteRes.body.match(/data-value="([\d.]+)"[^>]*data-field="trailingPE"/);
+      const pe = peMatch ? parseFloat(peMatch[1]) : null;
 
       const result = {
         chart: chart?.chart?.result?.[0] ?? null,
-        summary: summaryResult,
+        pe,
       };
       const html = JSON.stringify(result);
       htmlCache.set(cacheKey, { html, time: Date.now() });
