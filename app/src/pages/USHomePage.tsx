@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useUSStore } from '../store/useUSStore';
 import { useUSStockData } from '../hooks/useUSStockData';
+import SharedHeader from '../components/SharedHeader';
 import type { USStock, DividendPayment, YearData } from '../types';
 
 const SF = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif';
@@ -26,10 +26,36 @@ function getBestYear(stocks: USStock[], allYears: number[]): number {
   return allYears[0];
 }
 
-function USDividendCalendar({ stocks, afterTax }: { stocks: USStock[]; afterTax: boolean }) {
+function TaxToggle({ afterTax, onChange }: { afterTax: boolean; onChange: (v: boolean) => void }) {
+  const btn = (label: string, active: boolean, val: boolean) => (
+    <button
+      onClick={() => onChange(val)}
+      style={{
+        fontSize: 12, fontWeight: active ? 600 : 500,
+        color: active ? '#1d1d1f' : '#86868b',
+        background: active ? '#fff' : 'none',
+        border: 'none', cursor: 'pointer',
+        padding: '4px 10px', borderRadius: 7,
+        boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+        fontFamily: SF,
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: '#f2f2f7', borderRadius: 9, padding: 2 }}>
+      {btn('稅前', !afterTax, false)}
+      {btn('稅後', afterTax, true)}
+    </div>
+  );
+}
+
+function USDividendCalendar({ stocks }: { stocks: USStock[] }) {
   const selected = stocks.filter((s) => s.selected);
   const allYears = getAvailableYears(selected);
   const [pinnedYear, setPinnedYear] = useState<number | null>(null);
+  const [afterTax, setAfterTax] = useState(false);
 
   const defaultYear = getBestYear(selected, allYears);
   const year = pinnedYear && allYears.includes(pinnedYear) ? pinnedYear : defaultYear;
@@ -84,7 +110,8 @@ function USDividendCalendar({ stocks, afterTax }: { stocks: USStock[]; afterTax:
             <span style={{ color: '#aeaeb2' }}>以下資料為除息月份（歷史確認）</span>
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <TaxToggle afterTax={afterTax} onChange={setAfterTax} />
           <button
             onClick={() => allYears[yearIdx + 1] && setPinnedYear(allYears[yearIdx + 1])}
             disabled={yearIdx >= allYears.length - 1}
@@ -154,9 +181,7 @@ function USDividendCalendar({ stocks, afterTax }: { stocks: USStock[]; afterTax:
                         </span>
                       ) : annualValue !== null && annualValue > 0 ? (
                         <span style={{ color: '#10b981', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                          {stock.shares > 0
-                            ? `$${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                            : `$${annualValue.toFixed(4)}`}
+                          {stock.shares > 0 ? `$${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `$${annualValue.toFixed(4)}`}
                         </span>
                       ) : (
                         <span style={{ color: '#aeaeb2', fontWeight: 500 }}>—</span>
@@ -193,12 +218,10 @@ function USDividendCalendar({ stocks, afterTax }: { stocks: USStock[]; afterTax:
 // ── Main Page ──────────────────────────────────────────────────────
 
 export default function USHomePage() {
-  const navigate = useNavigate();
   const { stocks, addStock, removeStock, toggleSelected, selectAll, updateShares, reorderStocks } = useUSStore();
   const { fetchStockData, loading, error } = useUSStockData();
   const [input, setInput] = useState('');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [afterTax, setAfterTax] = useState(false);
 
   async function handleAdd() {
     const id = input.trim().toUpperCase().replace(/\//g, '-');
@@ -221,196 +244,194 @@ export default function USHomePage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f7', fontFamily: SF }}>
 
-      {/* ── Header ── */}
-      <header style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.08)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: 896, margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Tab switcher */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f2f2f7', borderRadius: 10, padding: 3 }}>
-            <button
-              onClick={() => navigate('/')}
-              style={{ fontSize: 13, fontWeight: 500, color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', padding: '5px 14px', borderRadius: 8, transition: 'all 0.15s' }}
-            >
-              台股
-            </button>
-            <button
-              onClick={() => navigate('/us')}
-              style={{ fontSize: 13, fontWeight: 600, color: '#1d1d1f', background: '#fff', border: 'none', cursor: 'pointer', padding: '5px 14px', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
-            >
-              美股
-            </button>
-          </div>
-          <span style={{ fontSize: 12, color: '#aeaeb2' }}>v1.0</span>
-        </div>
-      </header>
+      <SharedHeader activeTab="us" />
 
-      {/* ── Main ── */}
       <main style={{ maxWidth: 896, margin: '0 auto', padding: '24px 24px 48px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {error && (
-          <div style={{ background: '#fff3f3', border: '1px solid #ffd0d0', borderRadius: 12, padding: '12px 16px', color: '#c0392b', fontSize: 13 }}>
+          <div style={{ background: '#fff5f5', border: '1px solid #ffcdd2', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#c62828' }}>
             {error}
           </div>
         )}
 
-        {/* Add Stock */}
-        <div style={{ background: '#fff', borderRadius: 20, padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* ── 新增股票 ── */}
+        <div style={{ display: 'flex', gap: 12 }}>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="輸入美股代號，例如 AAPL"
-            style={{ flex: 1, border: '1px solid #e5e5ea', borderRadius: 10, padding: '9px 14px', fontSize: 14, outline: 'none', fontFamily: SF, background: '#f9f9f9', color: '#1d1d1f' }}
+            placeholder="輸入股票代號，例如 AAPL"
+            style={{
+              flex: 1, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12,
+              padding: '12px 18px', fontSize: 15, color: '#1d1d1f',
+              background: '#fff', outline: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              fontFamily: SF,
+            }}
           />
           <button
             onClick={handleAdd}
             disabled={loading || !input.trim()}
-            style={{ background: '#0071e3', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: loading || !input.trim() ? 'not-allowed' : 'pointer', opacity: loading || !input.trim() ? 0.5 : 1, fontFamily: SF, whiteSpace: 'nowrap' }}
+            style={{
+              background: loading || !input.trim() ? '#aeaeb2' : '#0071e3',
+              color: '#fff', border: 'none', borderRadius: 12,
+              padding: '12px 24px', fontSize: 15, fontWeight: 500,
+              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap', fontFamily: SF,
+            }}
           >
-            新增
+            {loading ? '載入中...' : '新增'}
           </button>
         </div>
 
-        {/* Stock List */}
-        {stocks.length > 0 && (
-          <div style={{ background: '#fff', borderRadius: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-            {/* List header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #f2f2f7' }}>
+        {stocks.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '64px 0', color: '#aeaeb2' }}>
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 14px', display: 'block', opacity: 0.35 }}>
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+              <polyline points="16 7 22 7 22 13" />
+            </svg>
+            <p style={{ fontSize: 16, fontWeight: 500, color: '#6e6e73', marginBottom: 6 }}>尚未新增任何股票</p>
+            <p style={{ fontSize: 13, color: '#aeaeb2' }}>輸入股票代號開始分析</p>
+          </div>
+        ) : (
+          <>
+            {/* ── 全選 / 全部更新 ── */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  ref={(el) => { if (el) el.indeterminate = !allSelected && someSelected; }}
-                  onChange={(e) => selectAll(e.target.checked)}
-                  style={{ width: 15, height: 15, cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: 13, color: '#6e6e73', fontWeight: 500 }}>
-                  {stocks.filter((s) => s.selected).length} / {stocks.length} 支
+                <button
+                  onClick={() => selectAll(!allSelected)}
+                  style={{
+                    flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                    border: `2px solid ${someSelected ? '#0071e3' : '#d1d1d6'}`,
+                    background: allSelected ? '#0071e3' : someSelected ? '#e8f0fe' : '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  {allSelected ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : someSelected ? (
+                    <div style={{ width: 10, height: 2, background: '#0071e3', borderRadius: 1 }} />
+                  ) : null}
+                </button>
+                <span style={{ fontSize: 13, color: '#6e6e73' }}>
+                  {someSelected ? `已選 ${stocks.filter((s) => s.selected).length} / ${stocks.length}` : '全選'}
                 </span>
               </div>
               <button
                 onClick={handleReloadAll}
                 disabled={loading}
-                style={{ fontSize: 13, color: '#0071e3', background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 500, opacity: loading ? 0.5 : 1, fontFamily: SF }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontWeight: 500, color: loading ? '#aeaeb2' : '#0071e3', cursor: loading ? 'not-allowed' : 'pointer' }}
               >
                 {loading ? '更新中...' : '全部更新'}
               </button>
             </div>
 
-            {/* Stock rows */}
-            {stocks.map((s) => (
-              <div
-                key={s.id}
-                draggable
-                onDragStart={(e) => { e.dataTransfer.setData('text/plain', s.id); e.dataTransfer.effectAllowed = 'move'; }}
-                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverId(s.id); }}
-                onDragLeave={() => setDragOverId(null)}
-                onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); reorderStocks(fromId, s.id); setDragOverId(null); }}
-                onDragEnd={() => setDragOverId(null)}
-                style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #f2f2f7', gap: 12, background: dragOverId === s.id ? '#f0f7ff' : '#fff', transition: 'background 0.15s', cursor: 'grab' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={s.selected}
-                  onChange={() => toggleSelected(s.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
-                />
+            {/* ── 股票列表 ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {stocks.map((s) => (
+                <div
+                  key={s.id}
+                  draggable
+                  onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', s.id); }}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverId(s.id); }}
+                  onDragLeave={() => setDragOverId(null)}
+                  onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); reorderStocks(fromId, s.id); setDragOverId(null); }}
+                  onDragEnd={() => setDragOverId(null)}
+                  style={{
+                    background: '#fff', borderRadius: 14, padding: '12px 16px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    opacity: dragOverId === s.id ? 0.5 : 1,
+                    transition: 'opacity 0.15s', cursor: 'grab',
+                  }}
+                >
+                  {/* Drag handle */}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d1d6" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, cursor: 'grab' }}>
+                    <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
+                  </svg>
 
-                {/* Ticker + Name */}
-                <div style={{ flex: '0 0 120px', minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, color: '#1d1d1f', fontSize: 15 }}>{s.id}</div>
-                  {s.name && <div style={{ fontSize: 11, color: '#86868b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>}
-                </div>
+                  {/* Checkbox */}
+                  <button
+                    onClick={() => toggleSelected(s.id)}
+                    style={{
+                      flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                      border: `2px solid ${s.selected ? '#0071e3' : '#d1d1d6'}`,
+                      background: s.selected ? '#0071e3' : '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                  >
+                    {s.selected && (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
 
-                {/* Price */}
-                <div style={{ flex: '0 0 90px', textAlign: 'right' }}>
-                  {s.price !== null ? (
-                    <>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: '#1d1d1f', fontVariantNumeric: 'tabular-nums' }}>
-                        ${s.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {/* Stock info */}
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#f0f4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#0071e3', textAlign: 'center', lineHeight: 1.1 }}>{s.id}</span>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 15, color: '#1d1d1f' }}>{s.id}</span>
+                        {s.name && <span style={{ fontSize: 13, color: '#6e6e73', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>}
                       </div>
-                      <div style={{ fontSize: 11, color: '#86868b' }}>USD</div>
-                    </>
-                  ) : (
-                    <span style={{ color: '#aeaeb2', fontSize: 13 }}>—</span>
-                  )}
-                </div>
+                      <div style={{ fontSize: 12, color: '#aeaeb2', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {s.price !== null ? (
+                          <span>${s.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                        ) : (
+                          <span>尚未載入</span>
+                        )}
+                        {s.pe !== null && (
+                          <><span>|</span><span>P/E {s.pe.toFixed(1)}</span></>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-                {/* PE */}
-                <div style={{ flex: '0 0 60px', textAlign: 'right' }}>
-                  {s.pe !== null ? (
-                    <>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: '#1d1d1f', fontVariantNumeric: 'tabular-nums' }}>{s.pe.toFixed(1)}</div>
-                      <div style={{ fontSize: 11, color: '#86868b' }}>P/E</div>
-                    </>
-                  ) : (
-                    <span style={{ color: '#aeaeb2', fontSize: 13 }}>—</span>
-                  )}
-                </div>
+                  {/* Shares */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    <input
+                      type="number" min="0" placeholder="0"
+                      value={s.shares || ''}
+                      onChange={(e) => updateShares(s.id, Number(e.target.value) || 0)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ width: 64, border: '1px solid #e5e5ea', borderRadius: 8, padding: '5px 8px', fontSize: 13, textAlign: 'right', color: '#1d1d1f', outline: 'none', background: '#fafafa', fontFamily: SF }}
+                    />
+                    <span style={{ fontSize: 12, color: '#aeaeb2', whiteSpace: 'nowrap' }}>股</span>
+                  </div>
 
-                {/* Shares */}
-                <div style={{ flex: '0 0 100px', textAlign: 'right' }}>
-                  <input
-                    type="number"
-                    value={s.shares || ''}
-                    onChange={(e) => updateShares(s.id, Number(e.target.value) || 0)}
-                    onClick={(e) => e.stopPropagation()}
-                    placeholder="持股數"
-                    style={{ width: '100%', border: '1px solid #e5e5ea', borderRadius: 8, padding: '5px 8px', fontSize: 12, textAlign: 'right', outline: 'none', fontFamily: SF, background: '#f9f9f9', color: '#1d1d1f' }}
-                  />
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
+                  {/* Refresh + Delete */}
                   <button
                     onClick={() => fetchStockData(s.id, true)}
                     disabled={loading}
-                    title="重新載入"
-                    style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: '#f5f5f7', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0071e3', opacity: loading ? 0.5 : 1 }}
+                    style={{ padding: 6, borderRadius: 8, border: 'none', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: '#aeaeb2', flexShrink: 0, opacity: loading ? 0.5 : 1 }}
+                    onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.color = '#0071e3'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#aeaeb2'; }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                   </button>
                   <button
                     onClick={() => removeStock(s.id)}
-                    title="刪除"
-                    style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: '#f5f5f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff3b30' }}
+                    style={{ padding: 6, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: '#aeaeb2', flexShrink: 0 }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#ff3b30'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#aeaeb2'; }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
                   </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Dividend Calendar */}
-        {stocks.some((s) => s.selected && (s.dividendPayments.length > 0 || s.cashDividend.length > 0)) && (
-          <>
-            {/* Tax toggle */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f2f2f7', borderRadius: 10, padding: 3 }}>
-                <button
-                  onClick={() => setAfterTax(false)}
-                  style={{ fontSize: 12, fontWeight: afterTax ? 500 : 600, color: afterTax ? '#86868b' : '#1d1d1f', background: afterTax ? 'none' : '#fff', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: 8, boxShadow: afterTax ? 'none' : '0 1px 3px rgba(0,0,0,0.1)' }}
-                >
-                  稅前
-                </button>
-                <button
-                  onClick={() => setAfterTax(true)}
-                  style={{ fontSize: 12, fontWeight: afterTax ? 600 : 500, color: afterTax ? '#1d1d1f' : '#86868b', background: afterTax ? '#fff' : 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: 8, boxShadow: afterTax ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                >
-                  稅後
-                </button>
-              </div>
+              ))}
             </div>
-            <USDividendCalendar stocks={stocks} afterTax={afterTax} />
-          </>
-        )}
 
-        {stocks.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 24px', color: '#aeaeb2', fontSize: 14 }}>
-            輸入美股代號開始追蹤，例如：AAPL、JNJ、SCHD
-          </div>
+            {/* ── 股利日曆 ── */}
+            <USDividendCalendar stocks={stocks} />
+          </>
         )}
       </main>
     </div>
