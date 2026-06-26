@@ -60,17 +60,18 @@ async function fetchGoodinfo(path, clientId) {
 let cachedClientId = null;
 let cacheTime = 0;
 
-// Yahoo Finance cookie (A3) — required for chart API since mid-2025
+// Yahoo Finance session cookie — fetch full session from homepage
 let yfCookie = null;
 let yfCookieTime = 0;
 
 async function getYFCookie() {
   if (yfCookie && Date.now() - yfCookieTime < 60 * 60 * 1000) return yfCookie;
-  const fcRes = await httpsGet('https://fc.yahoo.com', {
+  const res = await httpsGet('https://finance.yahoo.com/', {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    Accept: '*/*',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
   });
-  const setCookie = fcRes.headers['set-cookie'];
+  const setCookie = res.headers['set-cookie'];
   let cookie = '';
   if (setCookie) {
     const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
