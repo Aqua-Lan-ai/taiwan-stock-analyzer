@@ -386,6 +386,12 @@ export default function USHomePage() {
                         ) : (
                           <span>尚未載入</span>
                         )}
+                        {s.lastUpdated && (() => {
+                          const d = new Date(s.lastUpdated);
+                          const stale = Date.now() - d.getTime() > 24 * 60 * 60 * 1000;
+                          const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                          return <span style={{ color: stale ? '#ff9500' : '#aeaeb2' }}>{label}</span>;
+                        })()}
                       </div>
                     </div>
                   </div>

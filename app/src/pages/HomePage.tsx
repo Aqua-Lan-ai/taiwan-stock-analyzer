@@ -240,6 +240,12 @@ export default function HomePage() {
                           if (!secondary) return null;
                           return <><span style={{ margin: '0 8px' }}>|</span><span>{secondary}</span></>;
                         })()}
+                        {stock.lastUpdated && (() => {
+                          const d = new Date(stock.lastUpdated);
+                          const stale = Date.now() - d.getTime() > 24 * 60 * 60 * 1000;
+                          const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                          return <span style={{ marginLeft: 8, color: stale ? '#ff9500' : '#aeaeb2' }}>{label}</span>;
+                        })()}
                       </div>
                     </div>
                   </div>
