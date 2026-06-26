@@ -60,29 +60,25 @@ async function fetchGoodinfo(path, clientId) {
 let cachedClientId = null;
 let cacheTime = 0;
 
-// Yahoo Finance crumb auth
-let yfCrumb = null;
+// Yahoo Finance cookie (A3) — required for chart API since mid-2025
 let yfCookie = null;
-let yfCrumbTime = 0;
+let yfCookieTime = 0;
 
-async function getYFCrumb() {
-  if (yfCrumb && yfCookie && Date.now() - yfCrumbTime < 60 * 60 * 1000) return { crumb: yfCrumb, cookie: yfCookie };
-  const fcRes = await httpsGet('https://fc.yahoo.com', { Accept: '*/*' });
+async function getYFCookie() {
+  if (yfCookie && Date.now() - yfCookieTime < 60 * 60 * 1000) return yfCookie;
+  const fcRes = await httpsGet('https://fc.yahoo.com', {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    Accept: '*/*',
+  });
   const setCookie = fcRes.headers['set-cookie'];
   let cookie = '';
   if (setCookie) {
     const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
     cookie = cookies.map((c) => c.split(';')[0]).join('; ');
   }
-  const crumbRes = await httpsGet('https://query2.finance.yahoo.com/v1/test/getcrumb', {
-    Accept: 'application/json',
-    Cookie: cookie,
-    Referer: 'https://finance.yahoo.com/',
-  });
-  yfCrumb = crumbRes.body.trim();
   yfCookie = cookie;
-  yfCrumbTime = Date.now();
-  return { crumb: yfCrumb, cookie: yfCookie };
+  yfCookieTime = Date.now();
+  return yfCookie;
 }
 
 async function getClientId() {
@@ -118,14 +114,16 @@ export default async function handler(req, res) {
       return res.json({ html: cached.html, cached: true });
     }
     try {
+      const cookie = await getYFCookie();
+      const chartHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://finance.yahoo.com/',
+        'Cookie': cookie,
+      };
       const chartRes = await httpsGet(
         `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?events=dividends&range=10y&interval=1mo`,
-        {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Referer': 'https://finance.yahoo.com/',
-        }
+        chartHeaders
       );
 
       if (!chartRes.body.startsWith('{')) {
