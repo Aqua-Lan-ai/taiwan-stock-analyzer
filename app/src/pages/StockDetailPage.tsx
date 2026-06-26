@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { evaluateETFIndicators, calcETFScore } from '../utils/parser';
@@ -67,12 +67,6 @@ export default function StockDetailPage() {
     return stock.score;
   })();
 
-  useEffect(() => {
-    if (!id) return;
-    if (!stock || (!stock.financials && !stock.etfFinancials)) {
-      fetchStockData(id);
-    }
-  }, [id]);
 
   if (!stock) {
     return (
@@ -113,13 +107,21 @@ export default function StockDetailPage() {
               <p style={{ fontSize: 13, color: '#86868b', marginTop: 1 }}>現價 <span style={{ color: '#1d1d1f', fontWeight: 500 }}>${stock.price}</span></p>
             )}
           </div>
-          <button
-            onClick={() => fetchStockData(stock.id, true)}
-            disabled={loading || !!countdown}
-            style={{ fontSize: 13, color: (loading || countdown) ? '#aeaeb2' : '#0071e3', background: 'none', border: 'none', cursor: (loading || countdown) ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-          >
-            {countdown ? `等 ${countdown}` : loading ? '更新中...' : '重新載入'}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+            <button
+              onClick={() => fetchStockData(stock.id, true)}
+              disabled={loading || !!countdown}
+              style={{ fontSize: 13, color: (loading || countdown) ? '#aeaeb2' : '#0071e3', background: 'none', border: 'none', cursor: (loading || countdown) ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+            >
+              {countdown ? `等 ${countdown}` : loading ? '更新中...' : '重新載入'}
+            </button>
+            {stock.lastUpdated && (() => {
+              const d = new Date(stock.lastUpdated);
+              const stale = Date.now() - d.getTime() > 24 * 60 * 60 * 1000;
+              const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+              return <span style={{ fontSize: 11, color: stale ? '#ff9500' : '#aeaeb2' }}>{label}</span>;
+            })()}
+          </div>
         </div>
       </header>
 
