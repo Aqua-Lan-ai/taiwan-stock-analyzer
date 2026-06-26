@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, Component } from 'react';
+import type { ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { evaluateETFIndicators, calcETFScore } from '../utils/parser';
@@ -13,6 +14,27 @@ import ETFDetailSection from '../components/ETFDetailSection';
 import ProfitROEChart from '../components/charts/ProfitROEChart';
 import FreeCashFlowChart from '../components/charts/FreeCashFlowChart';
 import DividendChart from '../components/charts/DividendChart';
+
+class ContentErrorBoundary extends Component<{ children: ReactNode; onReset?: () => void }, { caught: boolean }> {
+  state = { caught: false };
+  static getDerivedStateFromError() { return { caught: true }; }
+  render() {
+    if (this.state.caught) {
+      return (
+        <div style={{ background: '#fff5f5', border: '1px solid #ffcdd2', borderRadius: 12, padding: '24px 20px', textAlign: 'center', color: '#c62828', fontSize: 13, margin: '8px 0' }}>
+          <p style={{ marginBottom: 12 }}>顯示錯誤，請重新載入</p>
+          <button
+            onClick={() => { this.setState({ caught: false }); this.props.onReset?.(); }}
+            style={{ fontSize: 13, color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+          >
+            重新載入
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const STOCK_INDICATOR_DESCRIPTIONS: Record<string, string> = {
   景氣循環: '近五年連續獲利',
@@ -130,6 +152,7 @@ export default function StockDetailPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+        <ContentErrorBoundary onReset={() => fetchStockData(stock.id, true)}>
         {/* Loading */}
         {loading && !hasData && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', color: '#86868b', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
@@ -231,6 +254,7 @@ export default function StockDetailPage() {
             資料更新時間：{new Date(stock.lastUpdated).toLocaleString('zh-TW')}
           </p>
         )}
+        </ContentErrorBoundary>
       </main>
     </div>
   );

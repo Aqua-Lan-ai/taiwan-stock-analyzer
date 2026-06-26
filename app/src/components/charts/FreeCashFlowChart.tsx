@@ -17,7 +17,7 @@ export default function FreeCashFlowChart({ freeCashFlow, years }: Props) {
   return (
     <div style={{ background: '#fff', borderRadius: 16, padding: '18px 16px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <h3 style={{ fontSize: 13, fontWeight: 600, color: '#1d1d1f', marginBottom: 14, letterSpacing: '-0.01em' }}>自由現金流量</h3>
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={200} debounce={50}>
         <BarChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
           <CartesianGrid strokeDasharray="2 4" stroke="#f2f2f7" vertical={false} />
           <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#86868b' }} axisLine={false} tickLine={false} />
