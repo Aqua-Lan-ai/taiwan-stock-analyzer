@@ -1,4 +1,4 @@
-import { } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { evaluateETFIndicators, calcETFScore } from '../utils/parser';
@@ -49,6 +49,10 @@ export default function StockDetailPage() {
   const { stocks, updateETFMeta } = useStore();
   const { fetchStockData, loading, error } = useStockData();
   const countdown = useRateLimitCountdown();
+
+  useEffect(() => {
+    if (id) fetchStockData(id);
+  }, [id]);
 
   const stock = stocks.find((s) => s.id === id);
   const isETF = stock?.type === 'etf';
