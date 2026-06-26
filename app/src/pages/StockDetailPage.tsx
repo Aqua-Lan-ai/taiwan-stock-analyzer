@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { evaluateETFIndicators, calcETFScore } from '../utils/parser';
 import { useStockData } from '../hooks/useStockData';
+import { useRateLimitCountdown } from '../store/useRateLimitStore';
 import ScoreBadge from '../components/ScoreBadge';
 import IndicatorRow from '../components/IndicatorRow';
 import ValuationCard from '../components/ValuationCard';
@@ -47,6 +48,7 @@ export default function StockDetailPage() {
   const navigate = useNavigate();
   const { stocks, updateETFMeta } = useStore();
   const { fetchStockData, loading, error } = useStockData();
+  const countdown = useRateLimitCountdown();
 
   const stock = stocks.find((s) => s.id === id);
   const isETF = stock?.type === 'etf';
@@ -115,10 +117,10 @@ export default function StockDetailPage() {
           </div>
           <button
             onClick={() => fetchStockData(stock.id, true)}
-            disabled={loading}
-            style={{ fontSize: 13, color: loading ? '#aeaeb2' : '#0071e3', background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+            disabled={loading || !!countdown}
+            style={{ fontSize: 13, color: (loading || countdown) ? '#aeaeb2' : '#0071e3', background: 'none', border: 'none', cursor: (loading || countdown) ? 'not-allowed' : 'pointer', fontWeight: 500 }}
           >
-            {loading ? '更新中...' : '重新載入'}
+            {countdown ? `等 ${countdown}` : loading ? '更新中...' : '重新載入'}
           </button>
         </div>
       </header>

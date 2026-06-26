@@ -6,6 +6,7 @@ import ScoreBadge from '../components/ScoreBadge';
 import DividendCalendar from '../components/DividendCalendar';
 import SharedHeader from '../components/SharedHeader';
 import { evaluateETFIndicators, calcETFScore } from '../utils/parser';
+import { useRateLimitStore, useRateLimitCountdown } from '../store/useRateLimitStore';
 import type { Stock, YearData } from '../types';
 
 function avg3(arr: YearData[]): number | null {
@@ -44,6 +45,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { stocks, removeStock, toggleSelected, selectAll, updateShares, reorderStocks } = useStore();
   const { fetchStockData, loading, error } = useStockData();
+  const countdown = useRateLimitCountdown();
   const [input, setInput] = useState('');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const { addStock } = useStore();
@@ -65,9 +67,17 @@ export default function HomePage() {
   }
 
   async function handleReloadAll() {
-    for (let i = 0; i < stocks.length; i++) {
-      await fetchStockData(stocks[i].id, true);
-      if (i < stocks.length - 1) await new Promise(r => setTimeout(r, 2500));
+    if (useRateLimitStore.getState().rateLimitUntil) return;
+    // Sort oldest lastUpdated first (null = never updated goes first)
+    const sorted = [...stocks].sort((a, b) => {
+      if (!a.lastUpdated) return -1;
+      if (!b.lastUpdated) return 1;
+      return new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime();
+    });
+    for (let i = 0; i < sorted.length; i++) {
+      if (useRateLimitStore.getState().rateLimitUntil) break;
+      await fetchStockData(sorted[i].id, true);
+      if (i < sorted.length - 1) await new Promise(r => setTimeout(r, 2500));
     }
   }
 
@@ -158,15 +168,15 @@ export default function HomePage() {
               </div>
               <button
                 onClick={handleReloadAll}
-                disabled={loading}
+                disabled={loading || !!countdown}
                 style={{
                   background: 'none', border: 'none', padding: 0,
                   fontSize: 13, fontWeight: 500,
-                  color: loading ? '#aeaeb2' : '#0071e3',
-                  cursor: loading ? 'not-allowed' : 'pointer',
+                  color: (loading || countdown) ? '#aeaeb2' : '#0071e3',
+                  cursor: (loading || countdown) ? 'not-allowed' : 'pointer',
                 }}
               >
-                {loading ? '更新中...' : '全部更新'}
+                {countdown ? `等 ${countdown}` : loading ? '更新中...' : '全部更新'}
               </button>
             </div>
 

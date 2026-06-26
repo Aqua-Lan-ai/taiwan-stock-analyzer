@@ -7,6 +7,7 @@ import {
   parseExDividendDate, parseLatestBPS,
 } from '../utils/parser';
 import { useStore } from '../store/useStore';
+import { useRateLimitStore } from '../store/useRateLimitStore';
 
 const API = '/api';
 
@@ -273,8 +274,12 @@ export function useStockData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { updateStock } = useStore();
+  const { setRateLimit } = useRateLimitStore();
 
   const fetchStockData = useCallback(async (stockId: string, force = false) => {
+    const { rateLimitUntil } = useRateLimitStore.getState();
+    if (rateLimitUntil && Date.now() < rateLimitUntil) return;
+
     setLoading(true);
     setError(null);
 
@@ -397,11 +402,15 @@ export function useStockData() {
         });
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('goodinfo rate limit') || msg.includes('rate limit')) {
+        setRateLimit();
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [updateStock]);
+  }, [updateStock, setRateLimit]);
 
   return { fetchStockData, loading, error };
 }
