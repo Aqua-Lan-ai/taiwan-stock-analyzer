@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { useStockData } from '../hooks/useStockData';
+import { useStockData, useLivePrices } from '../hooks/useStockData';
 import ScoreBadge from '../components/ScoreBadge';
 import DividendCalendar from '../components/DividendCalendar';
 import SharedHeader from '../components/SharedHeader';
@@ -46,6 +46,9 @@ export default function HomePage() {
   const { stocks, removeStock, toggleSelected, selectAll, updateShares, reorderStocks } = useStore();
   const { fetchStockData, loading, error } = useStockData();
   const countdown = useRateLimitCountdown();
+  const fetchLivePrices = useLivePrices();
+
+  useEffect(() => { fetchLivePrices(); }, [fetchLivePrices]);
   const [input, setInput] = useState('');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const { addStock } = useStore();

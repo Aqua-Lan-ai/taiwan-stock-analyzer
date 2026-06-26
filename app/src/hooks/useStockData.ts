@@ -270,6 +270,28 @@ function parseDividendRows(html: string): {
 
 
 
+export function useLivePrices() {
+  const { stocks, updateStock } = useStore();
+
+  return useCallback(async () => {
+    await Promise.all(
+      stocks.map(async (s) => {
+        try {
+          const res = await fetch(`/api/proxy?stockId=${s.id}&type=twse_price&force=1`);
+          const json = await res.json();
+          if (json.error || !json.html) return;
+          const info = JSON.parse(json.html);
+          // z = 成交價, v = 成交量 (empty before market open)
+          const raw = info?.z ?? info?.y; // z=現價, y=昨收 (fallback)
+          if (!raw || raw === '-') return;
+          const price = parseFloat(raw.replace(/,/g, ''));
+          if (!isNaN(price) && price > 0) updateStock(s.id, { price });
+        } catch { /* ignore per-stock errors */ }
+      })
+    );
+  }, [stocks, updateStock]);
+}
+
 export function useStockData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
