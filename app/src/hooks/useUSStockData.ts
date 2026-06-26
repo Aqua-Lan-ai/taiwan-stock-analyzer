@@ -5,7 +5,7 @@ import { useUSStore } from '../store/useUSStore';
 const API = '/api';
 
 async function fetchYahoo(ticker: string, force = false): Promise<{ chart: unknown; pe: number | null } | null> {
-  const url = `${API}/proxy?ticker=${ticker}&type=us_stock${force ? '&force=1' : ''}`;
+  const url = `${API}/us-stock?ticker=${ticker}${force ? '&force=1' : ''}`;
   const res = await fetch(url);
   const json = await res.json();
   if (json.error) throw new Error(json.error);
