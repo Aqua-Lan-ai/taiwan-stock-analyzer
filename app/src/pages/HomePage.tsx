@@ -277,6 +277,17 @@ export default function HomePage() {
 
                   <ScoreBadge score={liveScore(stock)} />
 
+                  {/* Refresh */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); fetchStockData(stock.id, true); }}
+                    disabled={loading || !!countdown}
+                    style={{ padding: 6, borderRadius: 8, border: 'none', background: 'transparent', cursor: (loading || countdown) ? 'not-allowed' : 'pointer', color: '#aeaeb2', flexShrink: 0, opacity: (loading || countdown) ? 0.4 : 1 }}
+                    onMouseEnter={(e) => { if (!loading && !countdown) (e.currentTarget as HTMLButtonElement).style.color = '#0071e3'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#aeaeb2'; }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  </button>
+
                   {/* Delete */}
                   <button
                     onClick={(e) => { e.stopPropagation(); removeStock(stock.id); }}
