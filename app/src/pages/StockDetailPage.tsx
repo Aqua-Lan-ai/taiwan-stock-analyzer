@@ -69,11 +69,9 @@ export default function StockDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    const needsLoad =
-      !stock ||
-      (!stock.financials && !stock.etfFinancials) ||
-      (stock.etfFinancials && stock.etfFinancials.aum === null);
-    if (needsLoad) fetchStockData(id);
+    if (!stock || (!stock.financials && !stock.etfFinancials)) {
+      fetchStockData(id);
+    }
   }, [id]);
 
   if (!stock) {
@@ -132,6 +130,21 @@ export default function StockDetailPage() {
             <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid #e5e5ea', borderTopColor: '#0071e3', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             <p style={{ fontSize: 14 }}>正在從 Goodinfo 載入資料...</p>
+          </div>
+        )}
+
+        {/* No data + rate limited */}
+        {!loading && !hasData && !error && countdown && (
+          <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', color: '#86868b', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <p style={{ fontSize: 14, marginBottom: 6 }}>Goodinfo 暫時限制中</p>
+            <p style={{ fontSize: 13, color: '#ff9500' }}>等 {countdown} 後可重新載入</p>
+          </div>
+        )}
+
+        {/* No data + not loading (first time, no rate limit) */}
+        {!loading && !hasData && !error && !countdown && (
+          <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', color: '#86868b', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <p style={{ fontSize: 14 }}>尚未載入資料</p>
           </div>
         )}
 
