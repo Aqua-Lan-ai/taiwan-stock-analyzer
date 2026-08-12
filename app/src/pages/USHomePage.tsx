@@ -222,8 +222,8 @@ export default function USHomePage() {
   const { stocks, addStock, removeStock, toggleSelected, selectAll, updateShares, reorderStocks } = useUSStore();
   const { fetchStockData, loading, error } = useUSStockData();
   const [input, setInput] = useState('');
-  const { draggingId, overId, setRowRef, onHandlePointerDown, onHandlePointerMove, onHandlePointerUp } =
-    useReorderDrag(reorderStocks);
+  const { draggingId, dragOffsetY, setRowRef, getShiftY, onHandlePointerDown, onHandlePointerMove, onHandlePointerUp } =
+    useReorderDrag(stocks.map((s) => s.id), reorderStocks);
 
   async function handleAdd() {
     const id = input.trim().toUpperCase().replace(/\//g, '-');
@@ -343,10 +343,12 @@ export default function USHomePage() {
                   ref={setRowRef(s.id)}
                   style={{
                     background: '#fff', borderRadius: 14, padding: '12px 16px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', gap: 12,
-                    opacity: overId === s.id && draggingId !== s.id ? 0.5 : 1,
-                    transition: 'opacity 0.15s',
+                    position: 'relative',
+                    transition: draggingId === s.id ? 'none' : 'transform 0.15s, box-shadow 0.15s',
+                    ...(draggingId === s.id
+                      ? { boxShadow: '0 10px 28px rgba(0,0,0,0.18)', transform: `translateY(${dragOffsetY}px) scale(1.02)`, zIndex: 10 }
+                      : { boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transform: `translateY(${getShiftY(s.id)}px)` }),
                   }}
                 >
                   {/* Drag handle — wrapper is oversized vs the icon for a workable touch target */}

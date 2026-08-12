@@ -52,8 +52,8 @@ export default function HomePage() {
   useEffect(() => { fetchLivePrices(); }, [fetchLivePrices]);
   const [input, setInput] = useState('');
   const { addStock } = useStore();
-  const { draggingId, overId, setRowRef, onHandlePointerDown, onHandlePointerMove, onHandlePointerUp } =
-    useReorderDrag(reorderStocks);
+  const { draggingId, dragOffsetY, setRowRef, getShiftY, onHandlePointerDown, onHandlePointerMove, onHandlePointerUp } =
+    useReorderDrag(stocks.map((s) => s.id), reorderStocks);
 
   function liveScore(s: Stock): number {
     if (s.type === 'etf' && s.etfFinancials) {
@@ -197,10 +197,12 @@ export default function HomePage() {
                   ref={setRowRef(stock.id)}
                   style={{
                     background: '#fff', borderRadius: 14, padding: '12px 16px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', gap: 12,
-                    opacity: overId === stock.id && draggingId !== stock.id ? 0.5 : 1,
-                    transition: 'opacity 0.15s',
+                    position: 'relative',
+                    transition: draggingId === stock.id ? 'none' : 'transform 0.15s, box-shadow 0.15s',
+                    ...(draggingId === stock.id
+                      ? { boxShadow: '0 10px 28px rgba(0,0,0,0.18)', transform: `translateY(${dragOffsetY}px) scale(1.02)`, zIndex: 10 }
+                      : { boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transform: `translateY(${getShiftY(stock.id)}px)` }),
                   }}
                 >
                   {/* Drag handle — wrapper is oversized vs the icon for a workable touch target */}
