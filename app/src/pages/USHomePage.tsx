@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUSStore } from '../store/useUSStore';
 import { useUSStockData } from '../hooks/useUSStockData';
+import { useReorderDrag } from '../hooks/useReorderDrag';
 import SharedHeader from '../components/SharedHeader';
 import type { USStock, DividendPayment, YearData } from '../types';
 
@@ -221,7 +222,8 @@ export default function USHomePage() {
   const { stocks, addStock, removeStock, toggleSelected, selectAll, updateShares, reorderStocks } = useUSStore();
   const { fetchStockData, loading, error } = useUSStockData();
   const [input, setInput] = useState('');
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const { draggingId, overId, setRowRef, onHandlePointerDown, onHandlePointerMove, onHandlePointerUp } =
+    useReorderDrag(reorderStocks);
 
   async function handleAdd() {
     const id = input.trim().toUpperCase().replace(/\//g, '-');
@@ -338,22 +340,24 @@ export default function USHomePage() {
               {stocks.map((s) => (
                 <div
                   key={s.id}
-                  draggable
-                  onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', s.id); }}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverId(s.id); }}
-                  onDragLeave={() => setDragOverId(null)}
-                  onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); reorderStocks(fromId, s.id); setDragOverId(null); }}
-                  onDragEnd={() => setDragOverId(null)}
+                  ref={setRowRef(s.id)}
                   style={{
                     background: '#fff', borderRadius: 14, padding: '12px 16px',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', gap: 12,
-                    opacity: dragOverId === s.id ? 0.5 : 1,
-                    transition: 'opacity 0.15s', cursor: 'grab',
+                    opacity: overId === s.id && draggingId !== s.id ? 0.5 : 1,
+                    transition: 'opacity 0.15s',
                   }}
                 >
                   {/* Drag handle */}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d1d6" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, cursor: 'grab' }}>
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d1d6" strokeWidth="2" strokeLinecap="round"
+                    onPointerDown={onHandlePointerDown(s.id)}
+                    onPointerMove={onHandlePointerMove}
+                    onPointerUp={onHandlePointerUp}
+                    onPointerCancel={onHandlePointerUp}
+                    style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none' }}
+                  >
                     <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
                   </svg>
 

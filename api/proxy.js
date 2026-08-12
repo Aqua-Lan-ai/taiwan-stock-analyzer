@@ -7,7 +7,7 @@ const agent = new https.Agent({ rejectUnauthorized: false });
 const htmlCache = new Map();
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
-function httpsGet(url, headers = {}) {
+function httpsGetOnce(url, headers = {}) {
   return new Promise((resolve, reject) => {
     const options = {
       agent,
@@ -32,6 +32,20 @@ function httpsGet(url, headers = {}) {
       });
     }).on('error', reject);
   });
+}
+
+// goodinfo/upstream hosts occasionally reset the connection mid-request;
+// one retry clears most of these transient failures.
+const RETRYABLE_ERRORS = new Set(['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EPIPE']);
+
+async function httpsGet(url, headers = {}) {
+  try {
+    return await httpsGetOnce(url, headers);
+  } catch (err) {
+    if (!RETRYABLE_ERRORS.has(err.code)) throw err;
+    await new Promise((r) => setTimeout(r, 500));
+    return httpsGetOnce(url, headers);
+  }
 }
 
 function buildClientKey(pageBody) {

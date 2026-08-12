@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useStockData, useLivePrices } from '../hooks/useStockData';
+import { useReorderDrag } from '../hooks/useReorderDrag';
 import ScoreBadge from '../components/ScoreBadge';
 import DividendCalendar from '../components/DividendCalendar';
 import SharedHeader from '../components/SharedHeader';
@@ -50,8 +51,9 @@ export default function HomePage() {
 
   useEffect(() => { fetchLivePrices(); }, [fetchLivePrices]);
   const [input, setInput] = useState('');
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const { addStock } = useStore();
+  const { draggingId, overId, setRowRef, onHandlePointerDown, onHandlePointerMove, onHandlePointerUp } =
+    useReorderDrag(reorderStocks);
 
   function liveScore(s: Stock): number {
     if (s.type === 'etf' && s.etfFinancials) {
@@ -192,23 +194,24 @@ export default function HomePage() {
               {stocks.map((stock) => (
                 <div
                   key={stock.id}
-                  draggable
-                  onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', stock.id); }}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverId(stock.id); }}
-                  onDragLeave={() => setDragOverId(null)}
-                  onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); reorderStocks(fromId, stock.id); setDragOverId(null); }}
-                  onDragEnd={() => setDragOverId(null)}
+                  ref={setRowRef(stock.id)}
                   style={{
                     background: '#fff', borderRadius: 14, padding: '12px 16px',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', gap: 12,
-                    opacity: dragOverId === stock.id ? 0.5 : 1,
+                    opacity: overId === stock.id && draggingId !== stock.id ? 0.5 : 1,
                     transition: 'opacity 0.15s',
-                    cursor: 'grab',
                   }}
                 >
                   {/* Drag handle */}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d1d6" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, cursor: 'grab' }}>
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d1d6" strokeWidth="2" strokeLinecap="round"
+                    onPointerDown={onHandlePointerDown(stock.id)}
+                    onPointerMove={onHandlePointerMove}
+                    onPointerUp={onHandlePointerUp}
+                    onPointerCancel={onHandlePointerUp}
+                    style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none' }}
+                  >
                     <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
                   </svg>
                   {/* Checkbox */}
@@ -232,7 +235,6 @@ export default function HomePage() {
                   {/* Stock info */}
                   <div
                     onClick={() => navigate(`/stock/${stock.id}`)}
-                    onDragStart={(e) => e.stopPropagation()}
                     style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', minWidth: 0 }}
                   >
                     <div style={{

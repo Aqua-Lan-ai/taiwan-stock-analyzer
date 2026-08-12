@@ -21,7 +21,7 @@ function throttle() {
   return new Promise((r) => setTimeout(r, wait));
 }
 
-function httpsGet(url, headers = {}) {
+function httpsGetOnce(url, headers = {}) {
   return new Promise((resolve, reject) => {
     const options = {
       agent,
@@ -46,6 +46,20 @@ function httpsGet(url, headers = {}) {
       });
     }).on('error', reject);
   });
+}
+
+// goodinfo/upstream hosts occasionally reset the connection mid-request;
+// one retry clears most of these transient failures.
+const RETRYABLE_ERRORS = new Set(['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EPIPE']);
+
+async function httpsGet(url, headers = {}) {
+  try {
+    return await httpsGetOnce(url, headers);
+  } catch (err) {
+    if (!RETRYABLE_ERRORS.has(err.code)) throw err;
+    await new Promise((r) => setTimeout(r, 500));
+    return httpsGetOnce(url, headers);
+  }
 }
 
 // Parse CLIENT_KEY arr values from goodinfo's first-stage JS response
