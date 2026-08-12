@@ -18,6 +18,10 @@ export function useReorderDrag(ids: string[], onReorder: (fromId: string, toId: 
   const overIdRef = useRef<string | null>(null);
   const startYRef = useRef(0);
   const draggedSpanRef = useRef(0); // dragged row's height + gap to its neighbor
+  // Snapshot of each row's un-shifted midpoint, taken once at drag-start —
+  // hit-testing against live (shifting) rects would create a feedback loop
+  // where a row's own reflow flips which row reads as "closest", causing jitter.
+  const midpointsRef = useRef(new Map<string, number>());
 
   const setRowRef = useCallback((id: string) => (el: HTMLElement | null) => {
     if (el) rowRefs.current.set(id, el);
@@ -28,9 +32,15 @@ export function useReorderDrag(ids: string[], onReorder: (fromId: string, toId: 
     e.currentTarget.setPointerCapture(e.pointerId);
     draggingIdRef.current = id;
     startYRef.current = e.clientY;
-    const el = rowRefs.current.get(id);
-    const rect = el?.getBoundingClientRect();
-    draggedSpanRef.current = rect ? rect.height + 10 : 0; // 10 = list's flex gap
+
+    const midpoints = new Map<string, number>();
+    for (const [rowId, el] of rowRefs.current) {
+      const rect = el.getBoundingClientRect();
+      midpoints.set(rowId, rect.top + rect.height / 2);
+    }
+    midpointsRef.current = midpoints;
+    draggedSpanRef.current = (rowRefs.current.get(id)?.getBoundingClientRect().height ?? 0) + 10; // 10 = list's flex gap
+
     setDraggingId(id);
     setDragOffsetY(0);
   }, []);
@@ -40,9 +50,9 @@ export function useReorderDrag(ids: string[], onReorder: (fromId: string, toId: 
     setDragOffsetY(e.clientY - startYRef.current);
     let closestId: string | null = null;
     let closestDist = Infinity;
-    for (const [id, el] of rowRefs.current) {
-      const rect = el.getBoundingClientRect();
-      const dist = Math.abs(rect.top + rect.height / 2 - e.clientY);
+    for (const [id, midY] of midpointsRef.current) {
+      if (id === draggingIdRef.current) continue;
+      const dist = Math.abs(midY - e.clientY);
       if (dist < closestDist) { closestDist = dist; closestId = id; }
     }
     overIdRef.current = closestId;
