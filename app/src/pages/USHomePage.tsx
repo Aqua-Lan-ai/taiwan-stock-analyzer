@@ -349,17 +349,22 @@ export default function USHomePage() {
                     transition: 'opacity 0.15s',
                   }}
                 >
-                  {/* Drag handle */}
-                  <svg
-                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d1d6" strokeWidth="2" strokeLinecap="round"
+                  {/* Drag handle — wrapper is oversized vs the icon for a workable touch target */}
+                  <div
                     onPointerDown={onHandlePointerDown(s.id)}
                     onPointerMove={onHandlePointerMove}
                     onPointerUp={onHandlePointerUp}
                     onPointerCancel={onHandlePointerUp}
-                    style={{ flexShrink: 0, cursor: 'grab', touchAction: 'none' }}
+                    style={{
+                      flexShrink: 0, width: 32, height: 32, margin: '-9px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
+                    }}
                   >
-                    <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
-                  </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d1d6" strokeWidth="2" strokeLinecap="round">
+                      <line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/>
+                    </svg>
+                  </div>
 
                   {/* Checkbox */}
                   <button

@@ -7,6 +7,8 @@ export function useReorderDrag(onReorder: (fromId: string, toId: string) => void
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLElement>());
+  const draggingIdRef = useRef<string | null>(null);
+  const overIdRef = useRef<string | null>(null);
 
   const setRowRef = useCallback((id: string) => (el: HTMLElement | null) => {
     if (el) rowRefs.current.set(id, el);
@@ -15,34 +17,31 @@ export function useReorderDrag(onReorder: (fromId: string, toId: string) => void
 
   const onHandlePointerDown = useCallback((id: string) => (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
+    draggingIdRef.current = id;
     setDraggingId(id);
   }, []);
 
   const onHandlePointerMove = useCallback((e: React.PointerEvent) => {
-    setDraggingId((currentDraggingId) => {
-      if (!currentDraggingId) return currentDraggingId;
-      let closestId: string | null = null;
-      let closestDist = Infinity;
-      for (const [id, el] of rowRefs.current) {
-        const rect = el.getBoundingClientRect();
-        const dist = Math.abs(rect.top + rect.height / 2 - e.clientY);
-        if (dist < closestDist) { closestDist = dist; closestId = id; }
-      }
-      setOverId(closestId);
-      return currentDraggingId;
-    });
+    if (!draggingIdRef.current) return;
+    let closestId: string | null = null;
+    let closestDist = Infinity;
+    for (const [id, el] of rowRefs.current) {
+      const rect = el.getBoundingClientRect();
+      const dist = Math.abs(rect.top + rect.height / 2 - e.clientY);
+      if (dist < closestDist) { closestDist = dist; closestId = id; }
+    }
+    overIdRef.current = closestId;
+    setOverId(closestId);
   }, []);
 
   const onHandlePointerUp = useCallback(() => {
-    setDraggingId((currentDraggingId) => {
-      setOverId((currentOverId) => {
-        if (currentDraggingId && currentOverId && currentDraggingId !== currentOverId) {
-          onReorder(currentDraggingId, currentOverId);
-        }
-        return null;
-      });
-      return null;
-    });
+    const fromId = draggingIdRef.current;
+    const toId = overIdRef.current;
+    if (fromId && toId && fromId !== toId) onReorder(fromId, toId);
+    draggingIdRef.current = null;
+    overIdRef.current = null;
+    setDraggingId(null);
+    setOverId(null);
   }, [onReorder]);
 
   return { draggingId, overId, setRowRef, onHandlePointerDown, onHandlePointerMove, onHandlePointerUp };
