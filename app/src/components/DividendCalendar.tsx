@@ -113,7 +113,7 @@ export default function DividendCalendar({ stocks }: Props) {
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#1d1d1f', margin: 0 }}>股利日曆</h2>
           <p style={{ fontSize: 12, color: '#86868b', marginTop: 2 }}>
             {hasShares && yearTotal > 0 && (
-              <>{year} 年預估收入 <span style={{ color: '#10b981', fontWeight: 600 }}>${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span> · </>
+              <>{year} 年預估收入 <span style={{ color: '#10b981', fontWeight: 600 }}>{yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} 元</span> · </>
             )}
             <span style={{ color: '#aeaeb2' }}>以下資料為除息月份</span>
           </p>
@@ -173,7 +173,7 @@ export default function DividendCalendar({ stocks }: Props) {
                             <span style={{ color: '#0071e3', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{val.toFixed(2)}</span>
                             {stock.shares > 0 && (
                               <span style={{ fontSize: 10, color: '#86868b' }}>
-                                ${(val * stock.shares).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                {(val * stock.shares).toLocaleString(undefined, { maximumFractionDigits: 0 })} 元
                               </span>
                             )}
                           </div>
@@ -188,7 +188,7 @@ export default function DividendCalendar({ stocks }: Props) {
                         // Monthly payer: show total if shares set, else per-share sum
                         <span style={{ color: rowMonthlyTotal > 0 ? '#10b981' : (stock.shares > 0 ? '#aeaeb2' : '#1d1d1f'), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                           {stock.shares > 0
-                            ? (rowMonthlyTotal > 0 ? `$${rowMonthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—')
+                            ? (rowMonthlyTotal > 0 ? `${rowMonthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} 元` : '—')
                             : `${monthly.reduce<number>((s, v) => s + (v ?? 0), 0).toFixed(2)} 元`}
                         </span>
                       ) : annualValue !== null && annualValue > 0 ? (
@@ -197,7 +197,7 @@ export default function DividendCalendar({ stocks }: Props) {
                           <InfoIcon tooltip="除息日尚未公佈，僅顯示年度合計" />
                           <span style={{ color: '#10b981', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                             {stock.shares > 0
-                              ? `$${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (預估)`
+                              ? `${rowAnnualTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} 元 (預估)`
                               : `${annualValue.toFixed(2)} 元 (預估)`}
                           </span>
                         </div>
@@ -218,11 +218,11 @@ export default function DividendCalendar({ stocks }: Props) {
                 <td style={{ padding: '10px 16px', fontWeight: 600, color: '#1d1d1f', position: 'sticky', left: 0, background: '#f5f5f7', zIndex: 1, borderRight: '1px solid #f2f2f7' }}>合計</td>
                 {monthlyTotals.map((total, mi) => (
                   <td key={mi} style={{ textAlign: 'center', padding: '10px 4px', fontWeight: 600, color: total > 0 ? '#10b981' : '#aeaeb2', fontVariantNumeric: 'tabular-nums' }}>
-                    {total > 0 ? `$${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                    {total > 0 ? `${total.toLocaleString(undefined, { maximumFractionDigits: 0 })} 元` : '—'}
                   </td>
                 ))}
                 <td style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 700, color: yearTotal > 0 ? '#10b981' : '#aeaeb2', fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #f2f2f7' }}>
-                  {yearTotal > 0 ? `$${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                  {yearTotal > 0 ? `${yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} 元` : '—'}
                 </td>
               </tr>
             </tbody>

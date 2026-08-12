@@ -258,9 +258,14 @@ export default function USHomePage() {
         <div style={{ display: 'flex', gap: 12 }}>
           <input
             value={input}
-            onChange={(e) => setInput(e.target.value.toUpperCase())}
+            onChange={(e) => setInput(e.target.value.toUpperCase().replace(/[^A-Z0-9./-]/g, ''))}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             placeholder="輸入股票代號，例如 AAPL"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            lang="en"
             style={{
               flex: 1, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12,
               padding: '12px 18px', fontSize: 15, color: '#1d1d1f',

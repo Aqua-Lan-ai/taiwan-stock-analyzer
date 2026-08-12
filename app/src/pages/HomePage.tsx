@@ -108,8 +108,12 @@ export default function HomePage() {
             type="text"
             placeholder="輸入股號，例如 2330"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value.replace(/[^0-9A-Za-z]/g, ''))}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            lang="en"
             style={{
               flex: 1, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12,
               padding: '12px 18px', fontSize: 15, color: '#1d1d1f',
