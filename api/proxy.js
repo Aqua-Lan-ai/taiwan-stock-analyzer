@@ -186,6 +186,25 @@ export default async function handler(req, res) {
     }
   }
 
+  // FinMind: structured cash-dividend dataset, replaces goodinfo dividend calendar data
+  if (type === 'finmind_dividend') {
+    if (!stockId) return res.status(400).json({ error: 'stockId required' });
+    const cacheKey = `finmind_dividend/${stockId}`;
+    const cached = htmlCache.get(cacheKey);
+    if (cached && force !== '1' && Date.now() - cached.time < CACHE_TTL_MS) {
+      return res.json({ html: cached.html, cached: true });
+    }
+    try {
+      const token = process.env.FINMIND_TOKEN ? `&token=${process.env.FINMIND_TOKEN}` : '';
+      const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${stockId}&start_date=2015-01-01${token}`;
+      const result = await httpsGet(url, { Accept: 'application/json' });
+      htmlCache.set(cacheKey, { html: result.body, time: Date.now() });
+      return res.json({ html: result.body });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   if (!stockId) return res.status(400).json({ error: 'stockId required' });
 
   const paths = {
