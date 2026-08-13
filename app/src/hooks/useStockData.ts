@@ -27,10 +27,13 @@ async function fetchFinMindDividend(stockId: string, force = false): Promise<str
   return json.html ?? '';
 }
 
-// FinMind TaiwanStockDividend: CashExDividendTradingDate (YYYY-MM-DD, may be blank if unannounced)
-// + CashEarningsDistribution (per-share cash amount). Replaces goodinfo as the calendar's data source.
+// FinMind TaiwanStockDividend: CashExDividendTradingDate (YYYY-MM-DD, may be blank if unannounced).
+// Total per-share cash dividend is split across two fields — CashEarningsDistribution (paid from
+// retained earnings) and CashStatutorySurplus (paid from the statutory surplus reserve) — both must
+// be summed to match the company's actually announced total (verified against 8422: FinMind reports
+// 0.99844387 + 0.19968877 = 1.19813264 ≈ the announced 1.198).
 function parseFinMindDividend(body: string): { cashDividend: YearData[]; dividendPayments: DividendPayment[] } {
-  let rows: Array<{ CashExDividendTradingDate?: string; CashEarningsDistribution?: number }>;
+  let rows: Array<{ CashExDividendTradingDate?: string; CashEarningsDistribution?: number; CashStatutorySurplus?: number }>;
   try {
     const json = JSON.parse(body);
     rows = Array.isArray(json.data) ? json.data : [];
@@ -40,7 +43,7 @@ function parseFinMindDividend(body: string): { cashDividend: YearData[]; dividen
 
   const byYearMonth = new Map<string, { year: number; month: number; amount: number }>();
   for (const r of rows) {
-    const amount = r.CashEarningsDistribution ?? 0;
+    const amount = (r.CashEarningsDistribution ?? 0) + (r.CashStatutorySurplus ?? 0);
     const dateStr = r.CashExDividendTradingDate ?? '';
     if (!amount || amount <= 0 || !dateStr) continue;
     const parts = dateStr.split('-');
