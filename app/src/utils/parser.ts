@@ -168,12 +168,15 @@ export function calcScore(indicators: Indicators): number {
   return Object.values(indicators).filter(Boolean).length;
 }
 
-// Calculate buy/sell price based on recent avg cash dividend and yield
+// Calculate buy/sell price based on recent avg cash dividend and yield.
+// splitCutoffYear excludes pre-split years from the trailing average — a stock split changes
+// what "one share" means, so per-share dividend/EPS from before it isn't comparable to after.
 export function calcValuation(
   cashDividends: YearData[],
   eps: YearData[],
   buyYield: number,
-  sellYield: number
+  sellYield: number,
+  splitCutoffYear: number | null = null
 ): {
   buyPrice: number | null;
   sellPrice: number | null;
@@ -182,12 +185,12 @@ export function calcValuation(
   expensivePrice: number | null;
 } {
   const recentDiv = cashDividends
-    .filter((d) => d.value !== null)
+    .filter((d) => d.value !== null && (splitCutoffYear == null || d.year >= splitCutoffYear))
     .sort((a, b) => b.year - a.year)
     .slice(0, 3);
 
   const recentEps = eps
-    .filter((d) => d.value !== null && (d.value ?? 0) > 0)
+    .filter((d) => d.value !== null && (d.value ?? 0) > 0 && (splitCutoffYear == null || d.year >= splitCutoffYear))
     .sort((a, b) => b.year - a.year)
     .slice(0, 3);
 

@@ -7,14 +7,15 @@ interface Props {
   bps: YearData[];
   price: number | null;
   subType: StockSubType;
+  splitCutoffYear: number | null;
 }
 
 const YIELD = 4; // fixed 4%
 
-export default function ValuationCard({ cashDividend, eps, bps, price, subType }: Props) {
+export default function ValuationCard({ cashDividend, eps, bps, price, subType, splitCutoffYear }: Props) {
   const isFinancial = subType === 'financial';
   const { cheapPrice, fairPrice, expensivePrice, buyPrice } =
-    calcValuation(cashDividend, eps, YIELD, YIELD);
+    calcValuation(cashDividend, eps, YIELD, YIELD, splitCutoffYear);
 
   const recentBps = [...bps]
     .filter((d) => d.value !== null && (d.value ?? 0) > 0)
@@ -27,7 +28,7 @@ export default function ValuationCard({ cashDividend, eps, bps, price, subType }
   const currentPB   = price && latestBps ? price / latestBps : null;
 
   const recentDiv = [...cashDividend]
-    .filter((d) => d.value !== null)
+    .filter((d) => d.value !== null && (splitCutoffYear == null || d.year >= splitCutoffYear))
     .sort((a, b) => b.year - a.year)
     .slice(0, 3);
   const avgDiv = recentDiv.length > 0
@@ -35,7 +36,7 @@ export default function ValuationCard({ cashDividend, eps, bps, price, subType }
     : null;
 
   const recentEps = [...eps]
-    .filter((d) => d.value !== null && (d.value ?? 0) > 0)
+    .filter((d) => d.value !== null && (d.value ?? 0) > 0 && (splitCutoffYear == null || d.year >= splitCutoffYear))
     .sort((a, b) => b.year - a.year)
     .slice(0, 3);
   const avgEps = recentEps.length > 0

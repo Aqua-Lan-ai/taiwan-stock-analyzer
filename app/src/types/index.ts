@@ -71,12 +71,16 @@ export interface Financials {
   payoutRatio: YearData[];
   dividendDays: YearData[];
   dividendPayments: DividendPayment[];  // 月份級別配息紀錄
+  // Earliest year still comparable to the latest year's share count — years before this
+  // predate a stock split and shouldn't be averaged with post-split per-share figures.
+  splitCutoffYear: number | null;
 }
 
 export interface ETFFinancials {
   cashDividend: YearData[];
   dividendDays: YearData[];
   dividendPayments: DividendPayment[];  // 月份級別配息紀錄
+  splitCutoffYear: number | null;
   nav: number | null;
   premium: number | null;
   expenseRatio: number | null;

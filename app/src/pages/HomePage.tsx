@@ -31,7 +31,8 @@ function liveSecondary(s: Stock): string | null {
       const fair = latestBps ? Math.round(latestBps) : null;
       return fair ? `合理價 $${fair}` : null;
     }
-    const avgEps = avg3(s.financials.eps.filter((d) => (d.value ?? 0) > 0));
+    const { splitCutoffYear } = s.financials;
+    const avgEps = avg3(s.financials.eps.filter((d) => (d.value ?? 0) > 0 && (splitCutoffYear == null || d.year >= splitCutoffYear)));
     const fair = avgEps ? Math.round(avgEps * 20) : null;
     return fair ? `合理價 $${fair}` : null;
   }

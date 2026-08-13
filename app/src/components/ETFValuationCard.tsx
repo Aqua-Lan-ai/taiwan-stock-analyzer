@@ -15,8 +15,9 @@ export default function ETFValuationCard({ etfFinancials, price, etfAUM, etfExpe
   const isAUMAutoDetected = etfAUM === null && etfFinancials.aum !== null;
   const expenseRatio = etfExpenseRatio ?? etfFinancials.expenseRatio;
   const isExpenseEstimated = etfExpenseRatio === null && etfFinancials.expenseRatio !== null;
+  const { splitCutoffYear } = etfFinancials;
   const recentDivs = [...etfFinancials.cashDividend]
-    .filter((d) => d.value !== null)
+    .filter((d) => d.value !== null && (splitCutoffYear == null || d.year >= splitCutoffYear))
     .sort((a, b) => b.year - a.year)
     .slice(0, 3);
 

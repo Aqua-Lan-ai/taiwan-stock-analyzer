@@ -27,13 +27,36 @@ async function fetchFinMindDividend(stockId: string, force = false): Promise<str
   return json.html ?? '';
 }
 
+// The earliest year still comparable to the latest year's share count — a stock split (or
+// reverse split) changes what "one share" means, so per-share metrics (dividend, EPS) from
+// before the split can't be averaged together with post-split values. Walking backward from
+// the latest year, any year whose share count differs from the latest by more than 1.5x marks
+// the boundary; that year and earlier are excluded from trailing-average calculations.
+function detectSplitCutoffYear(sharesByYear: Map<number, number>): number | null {
+  const years = Array.from(sharesByYear.keys()).sort((a, b) => b - a);
+  if (years.length === 0) return null;
+  const latestShares = sharesByYear.get(years[0])!;
+  let cutoff = years[0];
+  for (const year of years) {
+    const ratio = sharesByYear.get(year)! / latestShares;
+    if (ratio < 0.67 || ratio > 1.5) break;
+    cutoff = year;
+  }
+  return cutoff;
+}
+
 // FinMind TaiwanStockDividend: CashExDividendTradingDate (YYYY-MM-DD, may be blank if unannounced).
 // Total per-share cash dividend is split across two fields — CashEarningsDistribution (paid from
 // retained earnings) and CashStatutorySurplus (paid from the statutory surplus reserve) — both must
 // be summed to match the company's actually announced total (verified against 8422: FinMind reports
 // 0.99844387 + 0.19968877 = 1.19813264 ≈ the announced 1.198).
-function parseFinMindDividend(body: string): { cashDividend: YearData[]; dividendPayments: DividendPayment[] } {
-  let rows: Array<{ CashExDividendTradingDate?: string; CashEarningsDistribution?: number; CashStatutorySurplus?: number }>;
+function parseFinMindDividend(body: string): { cashDividend: YearData[]; dividendPayments: DividendPayment[]; splitCutoffYear: number | null } {
+  let rows: Array<{
+    CashExDividendTradingDate?: string;
+    CashEarningsDistribution?: number;
+    CashStatutorySurplus?: number;
+    ParticipateDistributionOfTotalShares?: number;
+  }>;
   try {
     const json = JSON.parse(body);
     rows = Array.isArray(json.data) ? json.data : [];
@@ -46,12 +69,18 @@ function parseFinMindDividend(body: string): { cashDividend: YearData[]; dividen
   // payment doesn't get double-counted. Distinct dates falling in the same month (some
   // stocks pay more than once a month) are summed normally below.
   const byExactDate = new Map<string, number>();
+  const sharesByYear = new Map<number, number>();
   for (const r of rows) {
     const amount = (r.CashEarningsDistribution ?? 0) + (r.CashStatutorySurplus ?? 0);
     const dateStr = r.CashExDividendTradingDate ?? '';
+    if (dateStr && r.ParticipateDistributionOfTotalShares) {
+      const year = parseInt(dateStr.split('-')[0]);
+      if (!isNaN(year)) sharesByYear.set(year, r.ParticipateDistributionOfTotalShares);
+    }
     if (!amount || amount <= 0 || !dateStr) continue;
     byExactDate.set(dateStr, amount);
   }
+  const splitCutoffYear = detectSplitCutoffYear(sharesByYear);
 
   const byYearMonth = new Map<string, { year: number; month: number; amount: number }>();
   for (const [dateStr, amount] of byExactDate) {
@@ -77,7 +106,7 @@ function parseFinMindDividend(body: string): { cashDividend: YearData[]; dividen
     .slice(0, 30)
     .map(([year, value]) => ({ year, value }));
 
-  return { cashDividend, dividendPayments };
+  return { cashDividend, dividendPayments, splitCutoffYear };
 }
 
 function parseNum(s: string): number | null {
@@ -210,13 +239,14 @@ export function useStockData() {
         const name = parseStockName(basicHtml);
         const price = parseStockPrice(basicHtml);
         const { dividendDays } = parseDividendRows(divHtml);
-        const { cashDividend, dividendPayments } = parseFinMindDividend(finMindBody);
+        const { cashDividend, dividendPayments, splitCutoffYear } = parseFinMindDividend(finMindBody);
         const etfBasic = parseETFBasic(basicHtml);
 
         const etfFinancials: ETFFinancials = {
           cashDividend,
           dividendDays,
           dividendPayments,
+          splitCutoffYear,
           ...etfBasic,
         };
 
@@ -259,7 +289,7 @@ export function useStockData() {
         const perf = parsePerformanceRows(perfHtml);
         const { cfo, capex } = parseCashFlowRows(cfHtml);
         const { dividendDays } = parseDividendRows(divHtml);
-        const { cashDividend, dividendPayments } = parseFinMindDividend(finMindBody);
+        const { cashDividend, dividendPayments, splitCutoffYear } = parseFinMindDividend(finMindBody);
 
         const freeCashFlow: YearData[] = cfo.map((d) => {
           const k = capex.find((c) => c.year === d.year)?.value;
@@ -291,6 +321,7 @@ export function useStockData() {
           payoutRatio,
           dividendDays,
           dividendPayments,
+          splitCutoffYear,
         };
 
         const indicators = evaluateIndicators(financials, 5, subType);
