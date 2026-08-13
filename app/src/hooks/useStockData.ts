@@ -238,6 +238,14 @@ export function useStockData() {
 
         const name = parseStockName(basicHtml);
         const price = parseStockPrice(basicHtml);
+
+        // goodinfo occasionally returns a page we don't recognize as a block (so no exception is
+        // thrown) but that yields no usable content — name and price should always be parseable
+        // from a real page. Bail out rather than overwrite good cached data with an empty result.
+        if (!name && price === null) {
+          throw new Error('goodinfo 回應異常，資料無法解析（已保留原有資料）');
+        }
+
         const { dividendDays } = parseDividendRows(divHtml);
         const { cashDividend, dividendPayments, splitCutoffYear } = parseFinMindDividend(finMindBody);
         const etfBasic = parseETFBasic(basicHtml);
@@ -284,6 +292,13 @@ export function useStockData() {
 
         const name = parseStockName(basicHtml);
         const price = parseStockPrice(basicHtml);
+
+        // Same guard as the ETF branch: an unrecognized goodinfo response shouldn't silently
+        // overwrite good cached data with an empty parse.
+        if (!name && price === null) {
+          throw new Error('goodinfo 回應異常，資料無法解析（已保留原有資料）');
+        }
+
         const subType = parseSubType(basicHtml);
         const latestBpsValue = parseLatestBPS(basicHtml);
         const perf = parsePerformanceRows(perfHtml);
