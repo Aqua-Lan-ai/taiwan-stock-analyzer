@@ -41,11 +41,20 @@ function parseFinMindDividend(body: string): { cashDividend: YearData[]; dividen
     rows = [];
   }
 
-  const byYearMonth = new Map<string, { year: number; month: number; amount: number }>();
+  // FinMind's feed occasionally repeats the exact same ex-date as two separate records
+  // (e.g. a re-published announcement) — dedupe by exact date first so a genuine single
+  // payment doesn't get double-counted. Distinct dates falling in the same month (some
+  // stocks pay more than once a month) are summed normally below.
+  const byExactDate = new Map<string, number>();
   for (const r of rows) {
     const amount = (r.CashEarningsDistribution ?? 0) + (r.CashStatutorySurplus ?? 0);
     const dateStr = r.CashExDividendTradingDate ?? '';
     if (!amount || amount <= 0 || !dateStr) continue;
+    byExactDate.set(dateStr, amount);
+  }
+
+  const byYearMonth = new Map<string, { year: number; month: number; amount: number }>();
+  for (const [dateStr, amount] of byExactDate) {
     const parts = dateStr.split('-');
     if (parts.length !== 3) continue;
     const year = parseInt(parts[0]);
